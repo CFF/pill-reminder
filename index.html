@@ -16,15 +16,13 @@
     const ml=document.createElement("link");ml.rel="manifest";ml.href=URL.createObjectURL(bl);document.head.appendChild(ml);
   </script>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+
 
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
     html,body{height:100%;overscroll-behavior:none;}
     body{
-      font-family:'Inter',system-ui,-apple-system,sans-serif;
+      font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif;
       -webkit-tap-highlight-color:transparent;
       -webkit-font-smoothing:antialiased;
     }
@@ -41,6 +39,8 @@
       --card:     #ffffff;
       --card2:    #faf7f4;
       --sep:      rgba(0,0,0,0.08);
+      --tab-active: #ffffff;
+      --tab-list:   #e2d9ce;
       --t1:       #1a1a1a;
       --t2:       #6b6b6b;
       --t3:       rgba(0,0,0,0.30);
@@ -61,6 +61,8 @@
         --card:     #2c2c2e;
         --card2:    #3a3a3c;
         --sep:      rgba(255,255,255,0.10);
+        --tab-active: #48484a;
+        --tab-list:   #1c1c1e;
         --t1:       #f2f2f7;
         --t2:       #aeaeb2;
         --t3:       rgba(255,255,255,0.28);
@@ -303,6 +305,13 @@ function App(){
     if(newLog[session][id]){setFlash(id);setTimeout(()=>setFlash(null),400);}
   }
 
+  async function toggleHistoryTaken(date,session,id){
+    const existing=await dbGet(dayKey(date))||{morning:{},night:{}};
+    const newLog={...existing,[session]:{...existing[session],[id]:!existing[session]?.[id]}};
+    await dbSet(dayKey(date),newLog);
+    setHistory(prev=>prev.map(h=>h.date===date?{...h,log:newLog}:h));
+  }
+
   async function addPill(session){
     if(!newName.trim())return;
     const id=`${session[0]}${Date.now()}`;
@@ -373,24 +382,32 @@ function App(){
 
         <div style={{padding:"0 16px"}}>
           {selectedDay?(()=>{
-            const log=history.find(h=>h.date===selectedDay)?.log;
+            const dayLog=history.find(h=>h.date===selectedDay)?.log;
+            const isToday=selectedDay===todayStr();
             return sessions.map(({key,label,Icon,accent,iconBg,iconColor},si)=>(
               <GroupCard key={key} label={label}>
                 {(pillList[key]||[]).length===0
                   ?<div style={{padding:"16px 18px",color:"var(--t3)",fontSize:15,fontStyle:"italic"}}>No medicines</div>
                   :(pillList[key]||[]).map((pill,i)=>{
-                    const t=log?.[key]?.[pill.id]??false;
+                    const t=dayLog?.[key]?.[pill.id]??false;
                     return(
-                      <GroupRow key={pill.id} first={i===0}>
+                      <GroupRow key={pill.id} first={i===0}
+                        onClick={()=>toggleHistoryTaken(selectedDay,key,pill.id)}>
                         <div style={{display:"flex",alignItems:"center",gap:13,padding:"13px 16px"}}>
-                          <div style={{width:36,height:36,borderRadius:9,background:iconBg,
-                            display:"flex",alignItems:"center",justifyContent:"center",
-                            color:iconColor,flexShrink:0}}>
-                            <Icon/>
-                          </div>
+                          <button
+                            onClick={e=>{e.stopPropagation();toggleHistoryTaken(selectedDay,key,pill.id);}}
+                            style={{width:28,height:28,borderRadius:"50%",flexShrink:0,
+                              border:`2px solid ${t?accent:"var(--sep)"}`,
+                              background:t?accent:"transparent",
+                              display:"flex",alignItems:"center",justifyContent:"center",
+                              color:"#fff",transition:"border-color 0.15s,background 0.15s"}}>
+                            {t&&<IconCheck/>}
+                          </button>
                           <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontSize:16,fontWeight:600,color:"var(--t1)",
-                              textDecoration:t?"line-through":"none",opacity:t?0.45:1}}>{pill.name}</div>
+                            <div style={{fontSize:16,fontWeight:500,color:"var(--t1)",
+                              opacity:t?0.4:1,
+                              whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",
+                              transition:"opacity 0.2s"}}>{pill.name}</div>
                             <div style={{fontSize:13,color:"var(--t2)",marginTop:1}}>{pill.dose}</div>
                           </div>
                           <span style={{fontSize:13,fontWeight:600,color:t?"var(--green)":"var(--t3)"}}>
@@ -468,7 +485,11 @@ function App(){
   return(
     <div style={{minHeight:"100vh",background:"var(--bg)",paddingBottom:40}} className="fade-up">
       <div style={{maxWidth:480,margin:"0 auto"}}>
-        <div className="safe-top" style={{padding:"36px 20px 4px"}}>
+        <div className="safe-top" style={{padding:"36px 20px 16px",
+          background:"var(--card)",
+          borderRadius:"0 0 20px 20px",
+          boxShadow:"0 2px 8px rgba(0,0,0,0.07)",
+          marginBottom:4}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
             <div>
               <div style={{fontSize:13,color:"var(--t2)",fontWeight:500,lineHeight:1.2}}>
@@ -487,8 +508,8 @@ function App(){
                 </svg>
                 <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",
                   flexDirection:"column",gap:0}}>
-                  <span style={{fontSize:15,fontWeight:800,color:ringCol,lineHeight:1,letterSpacing:"-0.02em"}}>{taken}/{total}</span>
-                  <span style={{fontSize:9,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",marginTop:2}}>taken</span>
+                  <span style={{fontSize:16,fontWeight:800,color:ringCol,lineHeight:1,letterSpacing:"-0.02em"}}>{taken}/{total}</span>
+                  <span style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em",marginTop:3}}>taken</span>
                 </div>
               </div>
               {taken===total&&total>0&&(
@@ -514,7 +535,10 @@ function App(){
           </div>
         </div>
 
-        <div style={{padding:"12px 16px 0"}}>
+        <div style={{padding:"16px 16px 0"}}>
+          <div style={{padding:"0 4px",marginBottom:14,marginTop:10}}>
+            <div style={{fontSize:24,fontWeight:800,color:"var(--t1)",letterSpacing:"-0.03em",lineHeight:1.1}}>Today's Medications</div>
+          </div>
           {sessions.map(({key,label,Icon,accent,iconBg,iconColor})=>{
             const pills=pillList[key]||[], log=todayLog[key]||{};
             const allDone=pills.length>0&&pills.every(p=>log[p.id]);
@@ -591,7 +615,6 @@ function App(){
                           </button>
                           <div style={{flex:1,minWidth:0}}>
                             <div style={{fontSize:16,fontWeight:500,color:"var(--t1)",
-                              textDecoration:t?"line-through":"none",
                               opacity:t?0.4:1,
                               whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",
                               transition:"opacity 0.2s"}}>{pill.name}</div>
@@ -615,113 +638,93 @@ function App(){
           })}
 
           {/* Diet Section */}
-          <div style={{display:"flex",alignItems:"center",gap:7,padding:"0 4px",marginBottom:7}}>
-            <span style={{fontSize:13,fontWeight:600,color:"var(--t2)",textTransform:"uppercase",letterSpacing:"0.04em",
-              display:"flex",alignItems:"center",gap:5}}>
-              <span style={{color:"var(--green)"}}>
-                <IconLeaf/>
-              </span>
-              Low Sodium Guide
-            </span>
+          <div style={{padding:"0 4px",marginBottom:14,marginTop:24}}>
+            <div style={{fontSize:24,fontWeight:800,color:"var(--t1)",letterSpacing:"-0.03em",lineHeight:1.1}}>Diet Recommendations</div>
           </div>
 
           <div style={{background:"var(--card)",borderRadius:14,padding:"14px 16px",
-            marginBottom:10,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-            <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
-              <div style={{width:36,height:36,borderRadius:9,
-                background:"rgba(52,199,89,0.12)",
-                display:"flex",alignItems:"center",justifyContent:"center",
-                fontSize:18,flexShrink:0}}>🛡️</div>
-              <div>
-                <div style={{fontSize:13,fontWeight:700,color:"var(--t1)",marginBottom:4}}>
-                  Why this matters on Prednisone
-                </div>
-                <p style={{fontSize:14,lineHeight:1.6,color:"var(--t2)",margin:0}}>{SODIUM.why}</p>
+            marginBottom:12,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+
+            {/* Card header: title + badge */}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{color:"var(--green)",display:"flex"}}><IconLeaf/></span>
+                <span style={{fontSize:15,fontWeight:700,color:"var(--t1)"}}>Low Sodium Guide</span>
+              </div>
+              <div style={{background:"var(--gold-bg)",borderRadius:20,
+                padding:"4px 10px",display:"inline-flex",alignItems:"baseline",gap:4}}>
+                <span style={{fontSize:14,fontWeight:800,color:"var(--gold)",letterSpacing:"-0.02em"}}>&lt;2,000 mg</span>
+                <span style={{fontSize:11,color:"var(--gold)",opacity:0.7,fontWeight:500}}>/day</span>
               </div>
             </div>
+
+            {/* Explanation */}
+            <p style={{fontSize:14,lineHeight:1.6,color:"var(--t2)",margin:0}}>
+              <strong style={{color:"var(--t1)",fontWeight:600}}>Prednisone</strong> causes kidneys to retain sodium and water, raising blood pressure and causing swelling (edema). Staying under 2,000 mg/day helps counteract these side effects and protect your heart.
+            </p>
           </div>
 
-          <div style={{display:"flex",justifyContent:"center",marginBottom:12}}>
-            <div style={{background:"var(--gold-bg)",borderRadius:24,
-              padding:"8px 20px",display:"inline-flex",alignItems:"center",gap:10}}>
-              <span style={{fontSize:20,fontWeight:800,color:"var(--gold)",letterSpacing:"-0.02em"}}>&lt;2,000 mg</span>
-              <span style={{fontSize:12,color:"var(--gold)",opacity:0.75,fontWeight:500}}>sodium / day</span>
+          <div style={{background:"var(--card)",borderRadius:14,overflow:"hidden",
+            marginBottom:10,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+
+            {/* Tab bar */}
+            <div style={{display:"flex",background:"var(--card)",padding:"8px 8px",gap:4}}>
+              {[
+                ["eat",   "✅","Eat"],
+                ["avoid", "🚫","Avoid"],
+                ["tips",  "💡","Tips"],
+              ].map(([tab,emoji,name])=>{
+                const active=dietTab===tab;
+                return(
+                  <button key={tab} onClick={()=>setDietTab(tab)}
+                    style={{flex:1,padding:"9px 8px",borderRadius:8,
+                      background:active?"var(--card2)":"transparent",
+                      boxShadow:active?"0 1px 3px rgba(0,0,0,0.2),0 1px 2px rgba(0,0,0,0.12)":"none",
+                      display:"flex",alignItems:"center",justifyContent:"center",gap:6,
+                      transition:"background 0.15s,box-shadow 0.15s"}}>
+                    <span style={{fontSize:15,lineHeight:1}}>{emoji}</span>
+                    <span style={{fontSize:13,fontWeight:active?600:500,
+                      color:active?"var(--t1)":"var(--t2)",
+                      transition:"color 0.15s"}}>{name}</span>
+                  </button>
+                );
+              })}
             </div>
-          </div>
 
-          <div style={{padding:"0 4px",marginBottom:8}}>
-            <div style={{fontSize:22,fontWeight:800,color:"var(--t1)",letterSpacing:"-0.02em"}}>What to eat</div>
-          </div>
+            {/* Separator */}
+            <div style={{height:"0.5px",background:"var(--sep)",margin:"0 0"}}/>
 
-          <div style={{display:"flex",background:"var(--bg2)",borderRadius:11,padding:"3px",marginBottom:10,
-            boxShadow:"inset 0 1px 2px rgba(0,0,0,0.06)"}}>
-            {[
-              ["eat",   "✅","Eat",    "Good choices"],
-              ["avoid", "🚫","Avoid",  "Limit or avoid"],
-              ["tips",  "💡","Tips",   "Practical tips"],
-            ].map(([tab,emoji,name,sub])=>{
-              const active=dietTab===tab;
-              return(
-                <button key={tab} onClick={()=>setDietTab(tab)} className="tab-btn"
-                  style={{flex:1,padding:"7px 4px",borderRadius:9,
-                    background:active?"var(--card)":"transparent",
-                    boxShadow:active?"0 1px 4px rgba(0,0,0,0.12)":"none",
-                    display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
-                  <span style={{fontSize:13}}>{emoji}</span>
-                  <span style={{fontSize:12,fontWeight:active?700:500,color:active?"var(--t1)":"var(--t2)"}}>{name}</span>
-                  <span style={{fontSize:10,color:active?"var(--t2)":"var(--t3)",fontWeight:400,lineHeight:1.2,textAlign:"center",padding:"0 2px"}}>{sub}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {dietTab==="eat"&&(
-            <GroupCard>
-              {SODIUM.eat.map((item,i)=>(
-                <GroupRow key={i} first={i===0}>
-                  <div style={{display:"flex",alignItems:"center",gap:13,padding:"12px 16px"}}>
-                    <span style={{fontSize:26,flexShrink:0,lineHeight:1}}>{item.emoji}</span>
-                    <div style={{fontSize:15,fontWeight:600,color:"var(--t1)"}}>{item.label}</div>
-                  </div>
-                </GroupRow>
-              ))}
-            </GroupCard>
-          )}
-
-          {dietTab==="avoid"&&(
-            <GroupCard>
-              {SODIUM.avoid.map((item,i)=>(
-                <GroupRow key={i} first={i===0}>
-                  <div style={{display:"flex",alignItems:"center",gap:13,padding:"12px 16px"}}>
-                    <span style={{fontSize:26,flexShrink:0,lineHeight:1}}>{item.emoji}</span>
-                    <div style={{fontSize:15,fontWeight:600,color:"var(--t1)"}}>{item.label}</div>
-                  </div>
-                </GroupRow>
-              ))}
-            </GroupCard>
-          )}
-
-          {dietTab==="tips"&&(
-            <GroupCard>
-              {SODIUM.tips.map((tip,i)=>(
-                <GroupRow key={i} first={i===0}>
-                  <div style={{display:"flex",alignItems:"flex-start",gap:13,padding:"13px 16px"}}>
-                    <span style={{fontSize:22,flexShrink:0,lineHeight:1.3,marginTop:1}}>{tip.icon}</span>
-                    <p style={{margin:0,fontSize:14,lineHeight:1.6,color:"var(--t2)",fontWeight:500}}>{tip.text}</p>
-                  </div>
-                </GroupRow>
-              ))}
-              <GroupRow last>
-                <div style={{padding:"11px 16px"}}>
-                  <p style={{margin:0,fontSize:12,color:"var(--t3)",fontStyle:"italic",lineHeight:1.5}}>
-                    Always follow your doctor's specific dietary instructions. This is general information only.
-                  </p>
+            {/* Tab content */}
+            {(dietTab==="eat"?SODIUM.eat:dietTab==="avoid"?SODIUM.avoid:[]).map((item,i)=>(
+              <div key={i} style={{position:"relative"}}>
+                {i>0&&<div style={{position:"absolute",top:0,left:16,right:0,height:"0.5px",background:"var(--sep)"}}/>}
+                <div style={{display:"flex",alignItems:"center",gap:13,padding:"12px 16px"}}>
+                  <span style={{fontSize:26,flexShrink:0,lineHeight:1}}>{item.emoji}</span>
+                  <div style={{fontSize:15,fontWeight:600,color:"var(--t1)"}}>{item.label}</div>
                 </div>
-              </GroupRow>
-            </GroupCard>
-          )}
+              </div>
+            ))}
 
-          <div style={{textAlign:"center",fontSize:12,color:"var(--t3)",paddingTop:4,paddingBottom:12}} className="safe-bottom">
+            {dietTab==="tips"&&SODIUM.tips.map((tip,i)=>(
+              <div key={i} style={{position:"relative"}}>
+                {i>0&&<div style={{position:"absolute",top:0,left:16,right:0,height:"0.5px",background:"var(--sep)"}}/>}
+                <div style={{display:"flex",alignItems:"flex-start",gap:13,padding:"13px 16px"}}>
+                  <span style={{fontSize:22,flexShrink:0,lineHeight:1.3,marginTop:1}}>{tip.icon}</span>
+                  <p style={{margin:0,fontSize:14,lineHeight:1.6,color:"var(--t2)",fontWeight:500}}>{tip.text}</p>
+                </div>
+              </div>
+            ))}
+
+            {dietTab==="tips"&&(
+              <div style={{padding:"11px 16px",borderTop:"0.5px solid var(--sep)"}}>
+                <p style={{margin:0,fontSize:12,color:"var(--t3)",fontStyle:"italic",lineHeight:1.5}}>
+                  Always follow your doctor's specific dietary instructions. This is general information only.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div style={{textAlign:"center",fontSize:12,color:"var(--t3)",paddingTop:16,paddingBottom:12,letterSpacing:"0.02em"}} className="safe-bottom">
             Saved locally · Resets at midnight
           </div>
         </div>
@@ -735,7 +738,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
 <script>
 if("serviceWorker"in navigator){
-  const sw=`const C="pr-v5",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});`;
+  const sw=`const C="pr-v6",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});`;
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
