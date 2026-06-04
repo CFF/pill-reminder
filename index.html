@@ -174,6 +174,55 @@ const TIMING_OPTIONS=[
   {value:"before_bedtime",label:"Before bedtime"},
 ];
 
+// ── OpenFDA drug search (CORS-friendly) ──────────────────────────
+async function searchDrugs(query){
+  if(!query||query.length<2) return [];
+  try{
+    const q=encodeURIComponent(query);
+    const url=`https://api.fda.gov/drug/label.json?search=openfda.brand_name:${q}+openfda.generic_name:${q}&limit=10`;
+    console.log("[drug search] fetching:", url);
+    const res = await fetch(url);
+    console.log("[drug search] status:", res.status);
+    if(!res.ok) return [];
+    const data = await res.json();
+    console.log("[drug search] results:", data.results?.length);
+
+    const results = [];
+    const seen = new Set();
+
+    function toTitle(s){
+      if(!s) return "";
+      return s.charAt(0).toUpperCase()+s.slice(1).toLowerCase();
+    }
+
+    for(const r of (data.results||[])){
+      const brands = r.openfda?.brand_name||[];
+      const generics = r.openfda?.generic_name||[];
+      for(const name of brands){
+        const key=name.toLowerCase();
+        if(!seen.has(key)){
+          seen.add(key);
+          results.push({name:toTitle(name), sub:generics[0]?toTitle(generics[0]):""});
+        }
+      }
+      for(const name of generics){
+        const key=name.toLowerCase();
+        if(!seen.has(key)){
+          seen.add(key);
+          results.push({name:toTitle(name), sub:brands[0]?`Brand: ${toTitle(brands[0])}`:"Generic"});
+        }
+      }
+      if(results.length>=8) break;
+    }
+
+    console.log("[drug search] parsed:", results);
+    return results.slice(0,8);
+  }catch(e){
+    console.error("[drug search] error:", e);
+    return [];
+  }
+}
+
 const SODIUM={
   why:"Prednisone causes kidneys to retain sodium and water, raising blood pressure and causing swelling (edema). Staying under 2,000 mg/day helps counteract these side effects and protect your heart.",
   eat:[
@@ -316,6 +365,27 @@ function PillForm({initial, accent, onSave, onCancel, submitLabel="Add", default
   const [durationDays,setDurationDays] = useState(initial?.durationDays||7);
   const [startDate,setStartDate] = useState(initial?.startDate||todayStr());
   const [session,setSession]     = useState(initial?.session||defaultSession||"morning");
+  const [suggestions,setSuggestions] = useState([]);
+  const [showSuggestions,setShowSuggestions] = useState(false);
+  const searchTimer = useRef(null);
+
+  function handleNameChange(val){
+    setName(val);
+    setShowSuggestions(true);
+    clearTimeout(searchTimer.current);
+    if(val.length<2){setSuggestions([]);return;}
+    searchTimer.current=setTimeout(async()=>{
+      const res=await searchDrugs(val);
+      setSuggestions(res);
+    },300);
+  }
+
+  function pickSuggestion(s){
+    setName(s.name);
+    if(s.dose) setDose(s.dose);
+    setSuggestions([]);
+    setShowSuggestions(false);
+  }
 
   function handleSave(){
     if(!name.trim())return;
@@ -334,12 +404,38 @@ function PillForm({initial, accent, onSave, onCancel, submitLabel="Add", default
     <div style={{padding:"16px 16px 8px",background:"var(--card2)"}}>
 
       {/* Name + Dose inputs */}
-      <input autoFocus={!noAutoFocus} placeholder="Medicine name" value={name}
-        onChange={e=>setName(e.target.value)}
-        onKeyDown={e=>e.key==="Enter"&&handleSave()}
-        style={{width:"100%",padding:"11px 14px",borderRadius:12,border:"none",
-          background:"var(--card)",color:"var(--t1)",fontSize:16,marginBottom:8,display:"block",
-          boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}/>
+      <div style={{position:"relative",marginBottom:8}}>
+        <input autoFocus={!noAutoFocus} placeholder="Medicine name" value={name}
+          onChange={e=>handleNameChange(e.target.value)}
+          onKeyDown={e=>e.key==="Enter"&&handleSave()}
+          onFocus={()=>suggestions.length>0&&setShowSuggestions(true)}
+          style={{width:"100%",padding:"11px 14px",borderRadius:12,border:"none",
+            background:"var(--card)",color:"var(--t1)",fontSize:16,display:"block",
+            boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}/>
+        {showSuggestions&&suggestions.length>0&&(
+          <div style={{
+            position:"absolute",top:"calc(100% + 4px)",left:0,right:0,
+            background:"var(--card)",borderRadius:12,
+            boxShadow:"0 4px 20px rgba(0,0,0,0.15)",
+            zIndex:200,overflow:"hidden",
+          }}>
+            {suggestions.map((s,i)=>(
+              <button key={i}
+                onClick={()=>pickSuggestion(s)}
+                style={{
+                  width:"100%",padding:"11px 14px",
+                  display:"flex",flexDirection:"column",alignItems:"flex-start",
+                  background:"transparent",border:"none",cursor:"pointer",
+                  borderTop:i>0?"0.5px solid var(--sep)":"none",
+                  textAlign:"left",
+                }}>
+                <span style={{fontSize:15,fontWeight:500,color:"var(--t1)"}}>{s.name}</span>
+                {s.sub&&<span style={{fontSize:12,color:"var(--t3)",marginTop:2}}>{s.sub}</span>}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       <input placeholder="Dose — e.g. 1 tablet, 20 mg" value={dose}
         onChange={e=>setDose(e.target.value)}
         onKeyDown={e=>e.key==="Enter"&&handleSave()}
@@ -1249,7 +1345,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
 <script>
 if("serviceWorker"in navigator){
-  const sw=`const C="pr-v29",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});`;
+  const sw=`const C="pr-v33",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});`;
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
