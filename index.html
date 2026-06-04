@@ -159,15 +159,18 @@ async function migrateFromLS(){
 
 const DEFAULT_PILLS={
   morning:[{id:"m1",name:"Vitamin D",dose:"1 tablet"}],
-  night:  [{id:"n1",name:"Melatonin",dose:"1 tablet"}],
+  lunch:  [],
+  evening:[{id:"n1",name:"Melatonin",dose:"1 tablet"}],
 };
 
 const TIMING_OPTIONS=[
-  {value:"before_meal",  label:"Before meal"},
-  {value:"during_meal",  label:"During meal"},
-  {value:"after_meal",   label:"After meal"},
-  {value:"between_meals",label:"Between meals"},
-  {value:"after_sleeping",label:"After sleeping"},
+  {value:"upon_waking",   label:"Upon waking"},
+  {value:"morning",       label:"Morning"},
+  {value:"before_meal",   label:"Before meal"},
+  {value:"during_meal",   label:"During meal"},
+  {value:"after_meal",    label:"After meal"},
+  {value:"between_meals", label:"Between meals"},
+  {value:"evening",       label:"Evening"},
   {value:"before_bedtime",label:"Before bedtime"},
 ];
 
@@ -206,7 +209,7 @@ const SODIUM={
   ],
 };
 
-// ── Shape SVG icons (Lucide-style, inlined) ───────────────────────
+// ── Shape SVG icons (inlined) ─────────────────────────────────────
 const ShapeCapsule=({size=20,color="currentColor"})=>(
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <rect x="3" y="8" width="18" height="8" rx="4" stroke={color} strokeWidth="1.8" fill="none"/>
@@ -226,18 +229,34 @@ const ShapeOval=({size=20,color="currentColor"})=>(
     <ellipse cx="12" cy="12" rx="8" ry="5.5" fill={color} opacity="0.18"/>
   </svg>
 );
-const ShapeSquare=({size=20,color="currentColor"})=>(
+const ShapeRoundScored=({size=20,color="currentColor"})=>(
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <rect x="5" y="5" width="14" height="14" rx="3" stroke={color} strokeWidth="1.8" fill="none"/>
-    <rect x="5" y="5" width="14" height="14" rx="3" fill={color} opacity="0.18"/>
+    <circle cx="12" cy="12" r="7" stroke={color} strokeWidth="1.8" fill="none"/>
+    <circle cx="12" cy="12" r="7" fill={color} opacity="0.18"/>
+    <line x1="12" y1="5.2" x2="12" y2="18.8" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+const ShapeOblongScored=({size=20,color="currentColor"})=>(
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <rect x="3" y="8" width="18" height="8" rx="4" stroke={color} strokeWidth="1.8" fill="none"/>
+    <rect x="3" y="8" width="18" height="8" rx="4" fill={color} opacity="0.18"/>
+    <line x1="12" y1="8.2" x2="12" y2="15.8" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+const ShapeDiamond=({size=20,color="currentColor"})=>(
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <polygon points="12,3 21,12 12,21 3,12" stroke={color} strokeWidth="1.8" fill="none" strokeLinejoin="round"/>
+    <polygon points="12,3 21,12 12,21 3,12" fill={color} opacity="0.18"/>
   </svg>
 );
 
 const SHAPES=[
-  {value:"capsule", label:"Capsule", Icon:ShapeCapsule},
-  {value:"round",   label:"Round",   Icon:ShapeRound},
-  {value:"oval",    label:"Oval",    Icon:ShapeOval},
-  {value:"square",  label:"Square",  Icon:ShapeSquare},
+  {value:"capsule",       label:"Capsule",  Icon:ShapeCapsule},
+  {value:"round",         label:"Round",    Icon:ShapeRound},
+  {value:"oval",          label:"Oval",     Icon:ShapeOval},
+  {value:"round_scored",  label:"Scored",   Icon:ShapeRoundScored},
+  {value:"oblong_scored", label:"Oblong",   Icon:ShapeOblongScored},
+  {value:"diamond",       label:"Diamond",  Icon:ShapeDiamond},
 ];
 
 function ShapeIcon({shape, size=18, color="currentColor"}){
@@ -255,9 +274,11 @@ const IconTrash=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none">
 const IconDots=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="5" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="19" r="1.5" fill="currentColor"/></svg>;
 const IconPencil=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 const IconBack=()=><svg width="10" height="18" viewBox="0 0 10 18" fill="none"><polyline points="9 1 1 9 9 17" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+const IconFork=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M8 3v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="9" x2="12" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>;
 const IconChevron=()=><svg width="7" height="13" viewBox="0 0 7 13" fill="none"><polyline points="1 1 6 6.5 1 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 const IconLeaf=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2C6 2 3 8 3 12c0 5 3.5 8 9 8s9-4 9-8c0-3-1-6-3-8-1.5 2-3 3-6 3z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><line x1="12" y1="22" x2="12" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>;
 const IconArchive=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="2" y="4" width="20" height="5" rx="1" stroke="currentColor" strokeWidth="2"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9" stroke="currentColor" strokeWidth="2"/><path d="M10 13h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>;
+const IconClipboardList=({size=24})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none"><rect x="8" y="2" width="8" height="4" rx="1" stroke="currentColor" strokeWidth="2"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="currentColor" strokeWidth="2"/><line x1="9" y1="10" x2="15" y2="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="9" y1="14" x2="15" y2="14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="9" y1="18" x2="12" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>;
 
 function GroupCard({label,children,action}){
   return(
@@ -286,7 +307,7 @@ function GroupRow({first,last,children,onClick,style={}}){
 }
 
 // ── Add/Edit form ─────────────────────────────────────────────────
-function PillForm({initial, accent, onSave, onCancel, submitLabel="Add"}){
+function PillForm({initial, accent, onSave, onCancel, submitLabel="Add", defaultSession="morning", noAutoFocus=false}){
   const [name,setName]           = useState(initial?.name||"");
   const [dose,setDose]           = useState(initial?.dose||"");
   const [shape,setShape]         = useState(initial?.shape||"capsule");
@@ -294,6 +315,7 @@ function PillForm({initial, accent, onSave, onCancel, submitLabel="Add"}){
   const [ongoing,setOngoing]     = useState(initial?.durationDays==null?true:false);
   const [durationDays,setDurationDays] = useState(initial?.durationDays||7);
   const [startDate,setStartDate] = useState(initial?.startDate||todayStr());
+  const [session,setSession]     = useState(initial?.session||defaultSession||"morning");
 
   function handleSave(){
     if(!name.trim())return;
@@ -304,63 +326,89 @@ function PillForm({initial, accent, onSave, onCancel, submitLabel="Add"}){
       timing:timing||null,
       startDate,
       durationDays:ongoing?null:Number(durationDays),
+      session,
     });
   }
 
   return(
-    <div style={{padding:"14px 16px",background:"var(--card2)",borderBottom:"0.5px solid var(--sep)"}}>
+    <div style={{padding:"16px 16px 8px",background:"var(--card2)"}}>
 
-      {/* Name */}
-      <input autoFocus placeholder="Medicine name" value={name}
+      {/* Name + Dose inputs */}
+      <input autoFocus={!noAutoFocus} placeholder="Medicine name" value={name}
         onChange={e=>setName(e.target.value)}
         onKeyDown={e=>e.key==="Enter"&&handleSave()}
-        style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid var(--sep)",
-          background:"var(--card)",color:"var(--t1)",fontSize:16,marginBottom:8,display:"block"}}/>
-
-      {/* Dose */}
-      <input placeholder="Dose (e.g. 1 tablet)" value={dose}
+        style={{width:"100%",padding:"11px 14px",borderRadius:12,border:"none",
+          background:"var(--card)",color:"var(--t1)",fontSize:16,marginBottom:8,display:"block",
+          boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}/>
+      <input placeholder="Dose — e.g. 1 tablet, 20 mg" value={dose}
         onChange={e=>setDose(e.target.value)}
         onKeyDown={e=>e.key==="Enter"&&handleSave()}
-        style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid var(--sep)",
-          background:"var(--card)",color:"var(--t1)",fontSize:16,marginBottom:12,display:"block"}}/>
+        style={{width:"100%",padding:"11px 14px",borderRadius:12,border:"none",
+          background:"var(--card)",color:"var(--t1)",fontSize:15,marginBottom:16,display:"block",
+          boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}/>
 
-      {/* Shape */}
-      <div style={{marginBottom:12}}>
-        <div style={{fontSize:12,fontWeight:600,color:"var(--t2)",textTransform:"uppercase",
-          letterSpacing:"0.05em",marginBottom:7}}>Shape</div>
-        <div style={{display:"flex",gap:8}}>
+      {/* Session — only when adding new */}
+      {!initial?.id&&(
+        <div style={{marginBottom:16}}>
+          <div style={{fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",
+            letterSpacing:"0.06em",marginBottom:8}}>Time of day</div>
+          <div style={{display:"flex",gap:6}}>
+            {[{v:"morning",l:"Morning"},{v:"lunch",l:"Lunch"},{v:"evening",l:"Evening"}].map(({v,l})=>(
+              <button key={v} onClick={()=>setSession(v)}
+                style={{flex:1,padding:"9px 4px",borderRadius:12,fontSize:13,fontWeight:600,
+                  background:session===v?accent:"var(--card)",
+                  color:session===v?"#fff":"var(--t2)",
+                  border:"none",
+                  boxShadow:session===v?"none":"0 1px 3px rgba(0,0,0,0.07)",
+                  transition:"background 0.12s,color 0.12s"}}>
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Shape carousel */}
+      <div style={{marginBottom:16}}>
+        <div style={{fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",
+          letterSpacing:"0.06em",marginBottom:8}}>Shape</div>
+        <div style={{display:"flex",gap:8,overflowX:"auto",
+          WebkitOverflowScrolling:"touch",scrollbarWidth:"none",msOverflowStyle:"none",
+          paddingBottom:2}}>
           {SHAPES.map(({value,label,Icon})=>{
             const active=shape===value;
             return(
               <button key={value} onClick={()=>setShape(value)}
-                style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:5,
-                  padding:"10px 4px",borderRadius:10,
+                style={{flexShrink:0,width:70,height:70,
+                  display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5,
+                  borderRadius:14,border:"none",
                   background:active?accent:"var(--card)",
-                  border:`1.5px solid ${active?accent:"var(--sep)"}`,
-                  transition:"background 0.12s,border-color 0.12s"}}>
-                <Icon size={20} color={active?"#fff":undefined}/>
-                <span style={{fontSize:10,fontWeight:600,color:active?"#fff":"var(--t2)",
-                  letterSpacing:"0.03em"}}>{label}</span>
+                  boxShadow:active?"none":"0 1px 3px rgba(0,0,0,0.07)",
+                  transition:"background 0.12s"}}>
+                <Icon size={22} color={active?"#fff":"var(--t2)"}/>
+                <span style={{fontSize:10,fontWeight:600,
+                  color:active?"#fff":"var(--t2)",letterSpacing:"0.03em"}}>{label}</span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Timing */}
-      <div style={{marginBottom:12}}>
-        <div style={{fontSize:12,fontWeight:600,color:"var(--t2)",textTransform:"uppercase",
-          letterSpacing:"0.05em",marginBottom:7}}>When to take</div>
+      {/* When to take */}
+      <div style={{marginBottom:16}}>
+        <div style={{fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",
+          letterSpacing:"0.06em",marginBottom:8}}>When to take</div>
         <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
           {TIMING_OPTIONS.map(({value,label})=>{
             const active=timing===value;
             return(
               <button key={value} onClick={()=>setTiming(active?"":value)}
-                style={{padding:"7px 12px",borderRadius:20,fontSize:13,fontWeight:500,
+                style={{padding:"8px 14px",borderRadius:20,fontSize:13,fontWeight:500,
+                  border:"none",
                   background:active?accent:"var(--card)",
                   color:active?"#fff":"var(--t2)",
-                  border:`1.5px solid ${active?accent:"var(--sep)"}`,
-                  transition:"background 0.12s,color 0.12s,border-color 0.12s"}}>
+                  boxShadow:active?"none":"0 1px 3px rgba(0,0,0,0.07)",
+                  transition:"background 0.12s,color 0.12s"}}>
                 {label}
               </button>
             );
@@ -369,19 +417,18 @@ function PillForm({initial, accent, onSave, onCancel, submitLabel="Add"}){
       </div>
 
       {/* Duration */}
-      <div style={{marginBottom:14}}>
-        <div style={{fontSize:12,fontWeight:600,color:"var(--t2)",textTransform:"uppercase",
-          letterSpacing:"0.05em",marginBottom:7}}>Duration</div>
-        <div style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--sep)",overflow:"hidden"}}>
-          {/* Ongoing toggle */}
+      <div style={{marginBottom:20}}>
+        <div style={{fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",
+          letterSpacing:"0.06em",marginBottom:8}}>Duration</div>
+        <div style={{background:"var(--card)",borderRadius:12,overflow:"hidden",
+          boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-            padding:"12px 14px",borderBottom:ongoing?"none":"0.5px solid var(--sep)"}}>
+            padding:"13px 16px",borderBottom:ongoing?"none":"0.5px solid var(--sep)"}}>
             <span style={{fontSize:15,color:"var(--t1)"}}>Ongoing</span>
             <button onClick={()=>setOngoing(!ongoing)}
-              style={{width:48,height:28,borderRadius:14,position:"relative",
-                background:ongoing?accent:"var(--sep)",transition:"background 0.2s"}}>
-              <div style={{position:"absolute",top:3,
-                left:ongoing?"23px":"3px",
+              style={{width:48,height:28,borderRadius:14,position:"relative",border:"none",
+                background:ongoing?accent:"var(--sep)",transition:"background 0.2s",cursor:"pointer"}}>
+              <div style={{position:"absolute",top:3,left:ongoing?"23px":"3px",
                 width:22,height:22,borderRadius:11,background:"#fff",
                 boxShadow:"0 1px 3px rgba(0,0,0,0.25)",transition:"left 0.2s"}}/>
             </button>
@@ -389,29 +436,21 @@ function PillForm({initial, accent, onSave, onCancel, submitLabel="Add"}){
           {!ongoing&&(
             <>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-                padding:"10px 14px",borderBottom:"0.5px solid var(--sep)"}}>
+                padding:"11px 16px",borderBottom:"0.5px solid var(--sep)"}}>
                 <span style={{fontSize:15,color:"var(--t1)"}}>Days</span>
-                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <div style={{display:"flex",alignItems:"center",gap:14}}>
                   <button onClick={()=>setDurationDays(Math.max(1,durationDays-1))}
-                    style={{width:30,height:30,borderRadius:8,background:"var(--bg2)",
-                      color:"var(--t1)",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                    −
-                  </button>
-                  <span style={{fontSize:16,fontWeight:600,color:"var(--t1)",minWidth:24,textAlign:"center"}}>
-                    {durationDays}
-                  </span>
+                    style={{width:30,height:30,borderRadius:8,background:"var(--bg2)",border:"none",
+                      color:"var(--t1)",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>−</button>
+                  <span style={{fontSize:16,fontWeight:600,color:"var(--t1)",minWidth:28,textAlign:"center"}}>{durationDays}</span>
                   <button onClick={()=>setDurationDays(durationDays+1)}
-                    style={{width:30,height:30,borderRadius:8,background:"var(--bg2)",
-                      color:"var(--t1)",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                    +
-                  </button>
+                    style={{width:30,height:30,borderRadius:8,background:"var(--bg2)",border:"none",
+                      color:"var(--t1)",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>+</button>
                 </div>
               </div>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-                padding:"10px 14px"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 16px"}}>
                 <span style={{fontSize:15,color:"var(--t1)"}}>Start date</span>
-                <input type="date" value={startDate}
-                  onChange={e=>setStartDate(e.target.value)}
+                <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)}
                   style={{border:"none",background:"transparent",color:"var(--blue)",
                     fontSize:15,fontWeight:500,textAlign:"right",cursor:"pointer"}}/>
               </div>
@@ -420,14 +459,18 @@ function PillForm({initial, accent, onSave, onCancel, submitLabel="Add"}){
         </div>
       </div>
 
-      <div style={{display:"flex",gap:8}}>
-        <button onClick={handleSave}
-          style={{flex:1,padding:"10px",borderRadius:10,background:accent,
-            color:"#fff",fontSize:14,fontWeight:700}}>{submitLabel}</button>
-        <button onClick={onCancel}
-          style={{padding:"10px 16px",borderRadius:10,
-            background:"var(--sep)",color:"var(--t2)",fontSize:14}}>Cancel</button>
-      </div>
+      {/* Actions — full-width primary, text cancel below */}
+      <button onClick={handleSave}
+        style={{width:"100%",padding:"14px",borderRadius:14,border:"none",
+          background:accent,color:"#fff",fontSize:16,fontWeight:700,
+          boxShadow:`0 2px 8px ${accent}55`,marginBottom:10,cursor:"pointer"}}>
+        {submitLabel}
+      </button>
+      <button onClick={onCancel}
+        style={{width:"100%",padding:"10px",border:"none",background:"transparent",
+          color:"var(--t2)",fontSize:15,fontWeight:500,cursor:"pointer",marginBottom:4}}>
+        Cancel
+      </button>
     </div>
   );
 }
@@ -440,11 +483,11 @@ function timingLabel(value){
 // ── Check and archive expired pills ──────────────────────────────
 async function archiveExpired(pillList){
   const today=todayStr();
-  const toArchive={morning:[],night:[]};
-  const remaining={morning:[],night:[]};
+  const toArchive={morning:[],lunch:[],evening:[]};
+  const remaining={morning:[],lunch:[],evening:[]};
   let changed=false;
 
-  for(const session of ["morning","night"]){
+  for(const session of ["morning","lunch","evening"]){
     for(const pill of (pillList[session]||[])){
       if(pill.durationDays!=null && pill.startDate){
         const endDate=addDays(pill.startDate, pill.durationDays);
@@ -464,7 +507,8 @@ async function archiveExpired(pillList){
   const existing=await dbGet(ARCHIVED_KEY)||{morning:[],night:[]};
   const newArchive={
     morning:[...existing.morning,...toArchive.morning],
-    night:  [...existing.night,  ...toArchive.night],
+    lunch:  [...existing.lunch||[],...toArchive.lunch],
+    evening:[...existing.evening||[],...toArchive.evening],
   };
   await dbSet(ARCHIVED_KEY, newArchive);
   await dbSet(PILL_LIST_KEY, remaining);
@@ -486,6 +530,7 @@ function App(){
   const [dietTab,setDietTab]    = useState("eat");
   const [menuOpen,setMenuOpen]  = useState(null);
   const [editing,setEditing]    = useState(null);
+  const [detailSheet,setDetailSheet] = useState(null); // {pill, session, accent}
 
   useEffect(()=>{
     const h=e=>{e.preventDefault();setInstallPrompt(e);};
@@ -498,6 +543,13 @@ function App(){
     (async()=>{
       await migrateFromLS();
       let list=await dbGet(PILL_LIST_KEY)||DEFAULT_PILLS;
+      // Migrate night→evening
+      if(list.night&&!list.evening){
+        list={...list,evening:list.night,lunch:list.lunch||[]};
+        delete list.night;
+        await dbSet(PILL_LIST_KEY,list);
+      }
+      if(!list.lunch) list={...list,lunch:[]};
       // Archive any expired pills on load
       list=await archiveExpired(list);
       setPillList(list);
@@ -512,10 +564,11 @@ function App(){
   },[]);
 
   function buildEmptyLog(list){
-    const m={},n={};
+    const m={},l={},e={};
     (list.morning||[]).forEach(p=>m[p.id]=false);
-    (list.night||[]).forEach(p=>n[p.id]=false);
-    return{morning:m,night:n};
+    (list.lunch||[]).forEach(p=>l[p.id]=false);
+    (list.evening||[]).forEach(p=>e[p.id]=false);
+    return{morning:m,lunch:l,evening:e};
   }
 
   const loadHistory=useCallback(async()=>{
@@ -539,11 +592,13 @@ function App(){
     setHistory(prev=>prev.map(h=>h.date===date?{...h,log:newLog}:h));
   }
 
-  async function addPill(session, pillData){
-    const id=`${session[0]}${Date.now()}`;
-    const pill={id,...pillData};
-    const newList={...pillList,[session]:[...pillList[session],pill]};
-    const newLog={...todayLog,[session]:{...todayLog[session],[id]:false}};
+  async function addPill(defaultSession, pillData){
+    const sess=pillData.session||defaultSession;
+    const id=`${sess[0]}${Date.now()}`;
+    const {session:_,...rest}=pillData;
+    const pill={id,...rest};
+    const newList={...pillList,[sess]:[...(pillList[sess]||[]),pill]};
+    const newLog={...todayLog,[sess]:{...todayLog[sess],[id]:false}};
     setPillList(newList);setTodayLog(newLog);
     await dbSet(PILL_LIST_KEY,newList);
     await dbSet(dayKey(todayStr()),newLog);
@@ -572,15 +627,19 @@ function App(){
 
   function dayScore(log,list){
     if(!log||!list)return{pct:0,taken:0,total:0};
-    const all=[...(list.morning||[]),...(list.night||[])];
+    const all=[...(list.morning||[]),...(list.lunch||[]),...(list.evening||[])];
     const t=all.length;
-    const k=all.filter(p=>{const s=list.morning.find(x=>x.id===p.id)?"morning":"night";return log[s]?.[p.id];}).length;
+    const k=all.filter(p=>{
+      const s=list.morning.find(x=>x.id===p.id)?"morning":list.lunch?.find(x=>x.id===p.id)?"lunch":"evening";
+      return log[s]?.[p.id];
+    }).length;
     return{pct:t?Math.round(k/t*100):0,taken:k,total:t};
   }
 
   const sessions=pillList?[
-    {key:"morning",label:"Morning",Icon:IconSun, accent:"var(--acc)",  iconBg:"var(--acc-soft)",  iconColor:"var(--acc)"},
-    {key:"night",  label:"Night",  Icon:IconMoon,accent:"var(--violet)",iconBg:"var(--violet-bg)",iconColor:"var(--violet)"},
+    {key:"morning",label:"Morning",Icon:IconSun,  accent:"var(--acc)",   iconBg:"var(--acc-soft)",   iconColor:"var(--acc)"},
+    {key:"lunch",  label:"Lunch",  Icon:IconFork, accent:"var(--green)", iconBg:"rgba(52,199,89,0.12)", iconColor:"var(--green)"},
+    {key:"evening",label:"Evening",Icon:IconMoon, accent:"var(--violet)",iconBg:"var(--violet-bg)", iconColor:"var(--violet)"},
   ]:[];
 
   if(loading)return(
@@ -594,7 +653,7 @@ function App(){
     // Build a combined timeline: history entries + archive events
     // Archive events: one entry per archived pill, keyed by endDate
     const archiveEvents=[];
-    for(const session of ["morning","night"]){
+    for(const session of ["morning","lunch","evening"]){
       for(const pill of (archived[session]||[])){
         if(pill.endDate) archiveEvents.push({date:pill.endDate, pill, session});
       }
@@ -743,8 +802,8 @@ function App(){
                                 <div style={{fontSize:13,color:"var(--t2)",marginTop:2}}>{tk} of {tt} medicines taken</div>
                               </div>
                               <div style={{display:"flex",flexWrap:"wrap",gap:3,width:32,justifyContent:"flex-end",flexShrink:0}}>
-                                {[...(pillList.morning||[]),...(pillList.night||[])].map(p=>{
-                                  const s=pillList.morning.find(x=>x.id===p.id)?"morning":"night";
+                                {[...(pillList.morning||[]),...(pillList.lunch||[]),...(pillList.evening||[])].map(p=>{
+                                  const s=pillList.morning.find(x=>x.id===p.id)?"morning":pillList.lunch?.find(x=>x.id===p.id)?"lunch":"evening";
                                   return<div key={p.id} style={{width:7,height:7,borderRadius:"50%",
                                     background:histEntry.log?.[s]?.[p.id]?"var(--green)":"var(--sep)"}}/>;
                                 })}
@@ -817,13 +876,16 @@ function App(){
                 color:"var(--blue)",fontSize:15,fontWeight:500,padding:"0"}}>
               View History <IconChevron/>
             </button>
-            {installPrompt&&!installed&&(
-              <button onClick={()=>{installPrompt.prompt();installPrompt.userChoice.then(()=>setInstallPrompt(null));}}
-                style={{background:"var(--acc-soft)",color:"var(--acc)",fontSize:12,fontWeight:600,
-                  padding:"5px 12px",borderRadius:20,letterSpacing:"0.02em"}}>
-                ⬇︎ Add to Home Screen
-              </button>
-            )}
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              {installPrompt&&!installed&&(
+                <button onClick={()=>{installPrompt.prompt();installPrompt.userChoice.then(()=>setInstallPrompt(null));}}
+                  style={{background:"var(--acc-soft)",color:"var(--acc)",fontSize:12,fontWeight:600,
+                    padding:"5px 12px",borderRadius:20,letterSpacing:"0.02em"}}>
+                  ⬇︎ Add to Home Screen
+                </button>
+              )}
+
+            </div>
           </div>
         </div>
 
@@ -832,54 +894,66 @@ function App(){
             <div style={{fontSize:24,fontWeight:800,color:"var(--t1)",letterSpacing:"-0.03em",lineHeight:1.1}}>Today's Medications</div>
           </div>
 
-          {sessions.map(({key,label,Icon,accent,iconBg,iconColor})=>{
+          {sessions.filter(({key})=>(pillList[key]||[]).length>0||adding===key).map(({key,label,Icon,accent,iconBg,iconColor})=>{
             const pills=pillList[key]||[], log=todayLog[key]||{};
             const allDone=pills.length>0&&pills.every(p=>log[p.id]);
             const prog=pills.filter(p=>log[p.id]).length;
 
+            // Pill card colors palette
+            const CARD_COLORS=["#5B8DEF","#E06B6B","#8B63CC","#4BAE8A","#E09B3D","#6BC5D2"];
+            function pillColor(pill){
+              if(pill.color) return pill.color;
+              const idx=Math.abs(pill.id.split("").reduce((a,c)=>a+c.charCodeAt(0),0))%CARD_COLORS.length;
+              return CARD_COLORS[idx];
+            }
+
             return(
-              <GroupCard key={key}
-                label={
-                  <span style={{display:"flex",alignItems:"center",gap:6}}>
+              <div key={key} style={{marginBottom:24}}>
+                {/* Section header */}
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+                  padding:"0 4px",marginBottom:10}}>
+                  <span style={{display:"flex",alignItems:"center",gap:6,
+                    fontSize:13,fontWeight:600,color:"var(--t2)",textTransform:"uppercase",letterSpacing:"0.04em"}}>
                     <span style={{display:"inline-flex",width:18,height:18,borderRadius:5,
                       background:iconBg,alignItems:"center",justifyContent:"center",color:iconColor}}>
                       <Icon/>
                     </span>
                     {label}
+                    {!allDone&&pills.length>0&&(
+                      <span style={{fontWeight:500,textTransform:"none",letterSpacing:0,color:"var(--t3)"}}>
+                        {prog}/{pills.length}
+                      </span>
+                    )}
+                    {allDone&&<span style={{fontWeight:600,color:"var(--green)",textTransform:"none",letterSpacing:0}}>✓</span>}
                   </span>
-                }
-                action={
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    {allDone&&<span style={{fontSize:12,fontWeight:600,color:"var(--green)"}}>Done ✓</span>}
-                    {!allDone&&pills.length>0&&<span style={{fontSize:12,color:"var(--t2)"}}>{prog}/{pills.length}</span>}
-                    <button onClick={()=>{setAdding(adding===key?null:key);}}
-                      style={{width:28,height:28,borderRadius:8,background:"var(--acc-soft)",
-                        display:"flex",alignItems:"center",justifyContent:"center",color:"var(--acc)"}}>
-                      <IconPlus/>
-                    </button>
-                  </div>
-                }>
+                  <button onClick={()=>setAdding(adding===key?null:key)}
+                    style={{width:28,height:28,borderRadius:8,background:"var(--acc-soft)",
+                      display:"flex",alignItems:"center",justifyContent:"center",color:"var(--acc)"}}>
+                    <IconPlus/>
+                  </button>
+                </div>
 
                 {adding===key&&(
-                  <PillForm
-                    accent={accent}
-                    onSave={data=>addPill(key,data)}
-                    onCancel={()=>setAdding(null)}
-                    submitLabel="Add"
-                  />
+                  <div style={{marginBottom:10,borderRadius:14,overflow:"hidden",
+                    boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+                    <PillForm
+                      accent={accent}
+                      defaultSession={key}
+                      initial={{session:key}}
+                      onSave={data=>addPill(key,{...data,session:key})}
+                      onCancel={()=>setAdding(null)}
+                      submitLabel="Add"
+                    />
+                  </div>
                 )}
 
-                {pills.length===0
-                  ?<div style={{padding:"16px 18px",color:"var(--t3)",fontSize:15,fontStyle:"italic"}}>
-                    No medicines — tap + to add
-                  </div>
-                  :pills.map((pill,i)=>{
+                {/* Pill cards */}
+                <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                  {pills.map(pill=>{
                     const t=!!log[pill.id];
                     const isEditing=editing?.id===pill.id;
-                    const menuVisible=menuOpen?.id===pill.id;
                     const tl=timingLabel(pill.timing);
-
-                    // Duration info
+                    const col=pillColor(pill);
                     let durationInfo=null;
                     if(pill.durationDays!=null&&pill.startDate){
                       const endDate=addDays(pill.startDate,pill.durationDays);
@@ -892,71 +966,106 @@ function App(){
                         :`Until ${formatShort(endDate)}`;
                     }
 
-                    return(
-                      <GroupRow key={pill.id} first={i===0&&adding!==key}>
-                        {isEditing?(
-                          <PillForm
-                            initial={pill}
-                            accent={accent}
-                            onSave={savePillEdit}
-                            onCancel={()=>setEditing(null)}
-                            submitLabel="Save"
-                          />
-                        ):(
-                          <div style={{display:"flex",alignItems:"center",gap:13,padding:"12px 16px"}}>
-                            {/* Shape icon */}
-                            <div style={{flexShrink:0,width:28,height:28,borderRadius:"50%",
-                              background:t?accent+"22":"var(--bg2)",
-                              display:"flex",alignItems:"center",justifyContent:"center",
-                              transition:"background 0.15s"}}>
-                              <ShapeIcon shape={pill.shape} size={16}
-                                color={t?accent:"var(--t2)"}/>
-                            </div>
-                            {/* Check circle */}
-                            <button onClick={()=>toggleTaken(key,pill.id)}
-                              className={flash===pill.id?"pop":""}
-                              style={{width:28,height:28,borderRadius:"50%",flexShrink:0,
-                                border:`2px solid ${t?accent:"var(--sep)"}`,
-                                background:t?accent:"transparent",
-                                display:"flex",alignItems:"center",justifyContent:"center",
-                                color:"#fff",transition:"border-color 0.15s,background 0.15s"}}>
-                              {t&&<IconCheck/>}
-                            </button>
-                            <div style={{flex:1,minWidth:0}}>
-                              <div style={{fontSize:16,fontWeight:500,color:"var(--t1)",
-                                opacity:t?0.4:1,
-                                whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",
-                                transition:"opacity 0.2s"}}>{pill.name}</div>
-                              <div style={{fontSize:13,color:"var(--t2)",marginTop:1,display:"flex",gap:6,flexWrap:"wrap"}}>
-                                <span>{pill.dose}</span>
-                                {tl&&<span style={{color:"var(--t3)"}}>· {tl}</span>}
-                                {durationInfo&&<span style={{color:durationInfo.includes("left")?"var(--acc)":"var(--t3)"}}>· {durationInfo}</span>}
-                              </div>
-                            </div>
-                            <div style={{position:"relative",flexShrink:0}}>
-                              <button
-                                onClick={e=>{
-                                  e.stopPropagation();
-                                  if(menuVisible){setMenuOpen(null);return;}
-                                  const r=e.currentTarget.getBoundingClientRect();
-                                  setMenuOpen({id:pill.id,session:key,pill,top:r.bottom+6,right:window.innerWidth-r.right});
-                                }}
-                                style={{width:32,height:32,borderRadius:8,flexShrink:0,
-                                  background:menuVisible?"var(--bg2)":"var(--card2)",
-                                  display:"flex",alignItems:"center",justifyContent:"center",
-                                  color:"var(--t2)",transition:"background 0.12s"}}>
-                                <IconDots/>
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </GroupRow>
+                    if(isEditing) return(
+                      <div key={pill.id} style={{borderRadius:14,overflow:"hidden",
+                        boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+                        <PillForm
+                          initial={{...pill,session:key}}
+                          accent={accent}
+                          onSave={savePillEdit}
+                          onCancel={()=>setEditing(null)}
+                          submitLabel="Save"
+                        />
+                      </div>
                     );
-                  })
-                }
-              </GroupCard>
+
+                    return(
+                      <div key={pill.id}
+                        onClick={()=>setDetailSheet({pill,session:key,accent,color:col})}
+                        style={{
+                          display:"flex",alignItems:"center",
+                          background:"var(--card)",
+                          borderRadius:16,
+                          overflow:"hidden",
+                          boxShadow:"0 1px 4px rgba(0,0,0,0.08)",
+                          cursor:"pointer",
+                          opacity:t?0.6:1,
+                          transition:"opacity 0.2s",
+                        }}>
+                        {/* Colored square left */}
+                        <div style={{
+                          width:72,height:72,flexShrink:0,
+                          background:col,
+                          display:"flex",alignItems:"center",justifyContent:"center",
+                        }}>
+                          <ShapeIcon shape={pill.shape} size={32} color="rgba(255,255,255,0.9)"/>
+                        </div>
+                        {/* Content */}
+                        <div style={{flex:1,minWidth:0,padding:"0 14px"}}>
+                          <div style={{fontSize:16,fontWeight:700,color:"var(--t1)",
+                            whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                            {pill.name}
+                          </div>
+                          <div style={{fontSize:13,color:"var(--t2)",marginTop:2}}>
+                            {SHAPES.find(s=>s.value===pill.shape)?.label||"Capsule"} · {pill.dose}
+                          </div>
+                          {(tl||durationInfo)&&(
+                            <div style={{fontSize:12,color:"var(--t3)",marginTop:3,display:"flex",gap:5}}>
+                              {tl&&<span>{tl}</span>}
+                              {tl&&durationInfo&&<span>·</span>}
+                              {durationInfo&&<span style={{color:durationInfo.includes("left")?"var(--acc)":"var(--t3)"}}>{durationInfo}</span>}
+                            </div>
+                          )}
+                        </div>
+                        {/* Radio right */}
+                        <div style={{paddingRight:16,flexShrink:0}}>
+                          <button
+                            onClick={e=>{e.stopPropagation();toggleTaken(key,pill.id);}}
+                            className={flash===pill.id?"pop":""}
+                            style={{width:28,height:28,borderRadius:"50%",
+                              border:`2px solid ${t?accent:"var(--sep)"}`,
+                              background:t?accent:"transparent",
+                              display:"flex",alignItems:"center",justifyContent:"center",
+                              color:"#fff",transition:"border-color 0.15s,background 0.15s"}}>
+                            {t&&<IconCheck/>}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
+
+          {/* If all sections empty, show a prompt */}
+          {sessions.every(({key})=>(pillList[key]||[]).length===0)&&!adding&&(
+            <div style={{
+              background:"var(--card)",borderRadius:16,
+              boxShadow:"0 1px 4px rgba(0,0,0,0.08)",
+              padding:"32px 24px",
+              display:"flex",flexDirection:"column",alignItems:"center",gap:16,
+              textAlign:"center",
+            }}>
+              <div style={{width:52,height:52,borderRadius:14,background:"var(--acc-soft)",
+                display:"flex",alignItems:"center",justifyContent:"center",color:"var(--acc)"}}>
+                <IconClipboardList size={26}/>
+              </div>
+              <div>
+                <div style={{fontSize:16,fontWeight:600,color:"var(--t1)",marginBottom:4}}>No medications yet</div>
+                <div style={{fontSize:14,color:"var(--t2)"}}>Add your first one to get started</div>
+              </div>
+              <button onClick={()=>setAdding("morning")}
+                style={{display:"inline-flex",alignItems:"center",gap:8,
+                  padding:"12px 24px",borderRadius:14,
+                  background:"var(--acc)",color:"#fff",
+                  fontSize:15,fontWeight:600,
+                  boxShadow:"0 2px 8px rgba(224,94,0,0.3)"}}>
+                <IconPlus/>
+                Add a medication
+              </button>
+            </div>
+          )}
 
           {/* Diet Section */}
           <div style={{padding:"0 4px",marginBottom:14,marginTop:24}}>
@@ -1029,6 +1138,79 @@ function App(){
         </div>
       </div>
 
+      {/* Detail bottom sheet */}
+      {detailSheet&&ReactDOM.createPortal(
+        <>
+          <div onClick={()=>setDetailSheet(null)}
+            style={{position:"fixed",inset:0,zIndex:1100,
+              background:"rgba(0,0,0,0.4)",
+              backdropFilter:"blur(2px)",WebkitBackdropFilter:"blur(2px)"}}/>
+          <div
+            ref={el=>{if(el){el.scrollTop=0;requestAnimationFrame(()=>{el.scrollTop=0;});}}}
+            style={{
+            position:"fixed",bottom:0,left:0,right:0,zIndex:1101,
+            background:"var(--card)",
+            borderRadius:"20px 20px 0 0",
+            boxShadow:"0 -4px 32px rgba(0,0,0,0.18)",
+            paddingBottom:"env(safe-area-inset-bottom,24px)",
+            maxHeight:"90vh",overflowY:"auto",
+            animation:"sheetUp 0.28s cubic-bezier(0.32,0.72,0,1)",
+          }}>
+            <style>{`@keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
+
+            {/* Handle */}
+            <div style={{display:"flex",justifyContent:"center",paddingTop:12,paddingBottom:8}}>
+              <div style={{width:36,height:4,borderRadius:2,background:"var(--sep)"}}/>
+            </div>
+
+            {/* Header: shape icon + name/dose + delete */}
+            <div style={{display:"flex",alignItems:"center",gap:14,padding:"4px 20px 16px"}}>
+              <div style={{width:52,height:52,borderRadius:14,flexShrink:0,
+                background:detailSheet.color||"var(--bg2)",
+                display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <ShapeIcon shape={detailSheet.pill.shape} size={28} color="rgba(255,255,255,0.9)"/>
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:20,fontWeight:700,color:"var(--t1)",
+                  whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                  {detailSheet.pill.name}
+                </div>
+                <div style={{fontSize:14,color:"var(--t2)",marginTop:2}}>{detailSheet.pill.dose}</div>
+              </div>
+              <button onClick={()=>{deletePill(detailSheet.session,detailSheet.pill.id);setDetailSheet(null);}}
+                style={{width:36,height:36,borderRadius:10,flexShrink:0,border:"none",cursor:"pointer",
+                  background:"rgba(255,59,48,0.10)",display:"flex",alignItems:"center",justifyContent:"center",
+                  color:"var(--red)"}}>
+                <IconTrash/>
+              </button>
+            </div>
+
+            {/* PillForm in edit mode, no cancel — closing sheet = cancel */}
+            <div style={{borderTop:"0.5px solid var(--sep)"}}>
+              <PillForm
+                initial={detailSheet.pill}
+                accent={detailSheet.accent}
+                submitLabel="Save"
+                noAutoFocus={true}
+                onSave={async(data)=>{
+                  const session=detailSheet.session;
+                  const id=detailSheet.pill.id;
+                  const{session:_,...rest}=data;
+                  const newList={...pillList,[session]:pillList[session].map(p=>
+                    p.id===id?{...p,...rest}:p
+                  )};
+                  setPillList(newList);
+                  await dbSet(PILL_LIST_KEY,newList);
+                  setDetailSheet(null);
+                }}
+                onCancel={()=>setDetailSheet(null)}
+              />
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
+
       {/* Portal dropdown */}
       {menuOpen&&ReactDOM.createPortal(
         <>
@@ -1067,7 +1249,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
 <script>
 if("serviceWorker"in navigator){
-  const sw=`const C="pr-v11",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});`;
+  const sw=`const C="pr-v29",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});`;
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
