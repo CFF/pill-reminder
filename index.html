@@ -116,7 +116,6 @@ function formatFull(str){
 }
 function getLast30Days(){return Array.from({length:30},(_,i)=>{const d=new Date();d.setDate(d.getDate()-i);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;});}
 
-// Add N days to a YYYY-MM-DD string, return YYYY-MM-DD
 function addDays(str,n){
   const[y,m,d]=str.split("-").map(Number);
   const dt=new Date(y,m-1,d);
@@ -174,53 +173,33 @@ const TIMING_OPTIONS=[
   {value:"before_bedtime",label:"Before bedtime"},
 ];
 
-// ── OpenFDA drug search (CORS-friendly) ──────────────────────────
+// ── OpenFDA drug search ──────────────────────────────────────────
 async function searchDrugs(query){
   if(!query||query.length<2) return [];
   try{
     const q=encodeURIComponent(query);
     const url=`https://api.fda.gov/drug/label.json?search=openfda.brand_name:${q}+openfda.generic_name:${q}&limit=10`;
-    console.log("[drug search] fetching:", url);
     const res = await fetch(url);
-    console.log("[drug search] status:", res.status);
     if(!res.ok) return [];
     const data = await res.json();
-    console.log("[drug search] results:", data.results?.length);
-
     const results = [];
     const seen = new Set();
-
-    function toTitle(s){
-      if(!s) return "";
-      return s.charAt(0).toUpperCase()+s.slice(1).toLowerCase();
-    }
-
+    function toTitle(s){if(!s)return "";return s.charAt(0).toUpperCase()+s.slice(1).toLowerCase();}
     for(const r of (data.results||[])){
       const brands = r.openfda?.brand_name||[];
       const generics = r.openfda?.generic_name||[];
       for(const name of brands){
         const key=name.toLowerCase();
-        if(!seen.has(key)){
-          seen.add(key);
-          results.push({name:toTitle(name), sub:generics[0]?toTitle(generics[0]):""});
-        }
+        if(!seen.has(key)){seen.add(key);results.push({name:toTitle(name),sub:generics[0]?toTitle(generics[0]):""});}
       }
       for(const name of generics){
         const key=name.toLowerCase();
-        if(!seen.has(key)){
-          seen.add(key);
-          results.push({name:toTitle(name), sub:brands[0]?`Brand: ${toTitle(brands[0])}`:"Generic"});
-        }
+        if(!seen.has(key)){seen.add(key);results.push({name:toTitle(name),sub:brands[0]?`Brand: ${toTitle(brands[0])}`:"Generic"});}
       }
       if(results.length>=8) break;
     }
-
-    console.log("[drug search] parsed:", results);
     return results.slice(0,8);
-  }catch(e){
-    console.error("[drug search] error:", e);
-    return [];
-  }
+  }catch(e){return [];}
 }
 
 const SODIUM={
@@ -258,7 +237,7 @@ const SODIUM={
   ],
 };
 
-// ── Shape SVG icons (inlined) ─────────────────────────────────────
+// ── Shape SVG icons ───────────────────────────────────────────────
 const ShapeCapsule=({size=20,color="currentColor"})=>(
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <rect x="3" y="8" width="18" height="8" rx="4" stroke={color} strokeWidth="1.8" fill="none"/>
@@ -402,8 +381,6 @@ function PillForm({initial, accent, onSave, onCancel, submitLabel="Add", default
 
   return(
     <div style={{padding:"16px 16px 8px",background:"var(--card2)"}}>
-
-      {/* Name + Dose inputs */}
       <div style={{position:"relative",marginBottom:8}}>
         <input autoFocus={!noAutoFocus} placeholder="Medicine name" value={name}
           onChange={e=>handleNameChange(e.target.value)}
@@ -443,7 +420,6 @@ function PillForm({initial, accent, onSave, onCancel, submitLabel="Add", default
           background:"var(--card)",color:"var(--t1)",fontSize:15,marginBottom:16,display:"block",
           boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}/>
 
-      {/* Session — only when adding new */}
       {!initial?.id&&(
         <div style={{marginBottom:16}}>
           <div style={{fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",
@@ -464,7 +440,6 @@ function PillForm({initial, accent, onSave, onCancel, submitLabel="Add", default
         </div>
       )}
 
-      {/* Shape carousel */}
       <div style={{marginBottom:16}}>
         <div style={{fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",
           letterSpacing:"0.06em",marginBottom:8}}>Shape</div>
@@ -490,7 +465,6 @@ function PillForm({initial, accent, onSave, onCancel, submitLabel="Add", default
         </div>
       </div>
 
-      {/* When to take */}
       <div style={{marginBottom:16}}>
         <div style={{fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",
           letterSpacing:"0.06em",marginBottom:8}}>When to take</div>
@@ -512,7 +486,6 @@ function PillForm({initial, accent, onSave, onCancel, submitLabel="Add", default
         </div>
       </div>
 
-      {/* Duration */}
       <div style={{marginBottom:20}}>
         <div style={{fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",
           letterSpacing:"0.06em",marginBottom:8}}>Duration</div>
@@ -555,7 +528,6 @@ function PillForm({initial, accent, onSave, onCancel, submitLabel="Add", default
         </div>
       </div>
 
-      {/* Actions — full-width primary, text cancel below */}
       <button onClick={handleSave}
         style={{width:"100%",padding:"14px",borderRadius:14,border:"none",
           background:accent,color:"#fff",fontSize:16,fontWeight:700,
@@ -571,12 +543,10 @@ function PillForm({initial, accent, onSave, onCancel, submitLabel="Add", default
   );
 }
 
-// ── Timing label helper ───────────────────────────────────────────
 function timingLabel(value){
   return TIMING_OPTIONS.find(o=>o.value===value)?.label||null;
 }
 
-// ── Check and archive expired pills ──────────────────────────────
 async function archiveExpired(pillList){
   const today=todayStr();
   const toArchive={morning:[],lunch:[],evening:[]};
@@ -599,7 +569,6 @@ async function archiveExpired(pillList){
 
   if(!changed) return pillList;
 
-  // Merge into existing archive
   const existing=await dbGet(ARCHIVED_KEY)||{morning:[],night:[]};
   const newArchive={
     morning:[...existing.morning,...toArchive.morning],
@@ -611,10 +580,53 @@ async function archiveExpired(pillList){
   return remaining;
 }
 
+// ── History helpers ───────────────────────────────────────────────
+// Returns all pills (active + archived) that were active on a given date,
+// each annotated with their session key.
+function buildActivePillsForDate(date, pillList, archived) {
+  const pills = [];
+
+  for (const session of ["morning","lunch","evening"]) {
+    for (const pill of (pillList[session]||[])) {
+      if (!pill.durationDays || !pill.startDate) {
+        // Ongoing — active on every day
+        pills.push({...pill, session});
+      } else {
+        const end = addDays(pill.startDate, pill.durationDays);
+        if (date >= pill.startDate && date < end) {
+          pills.push({...pill, session});
+        }
+      }
+    }
+    // Archived pills: active if startDate <= date < endDate
+    for (const pill of (archived[session]||[])) {
+      if (pill.startDate && pill.endDate && date >= pill.startDate && date < pill.endDate) {
+        pills.push({...pill, session});
+      }
+    }
+  }
+
+  return pills;
+}
+
+function dayScore(log, list, archived, date) {
+  if (!log) return {pct:0, taken:0, total:0};
+  const pills = date
+    ? buildActivePillsForDate(date, list, archived)
+    : [
+        ...(list.morning||[]).map(p=>({...p,session:"morning"})),
+        ...(list.lunch||[]).map(p=>({...p,session:"lunch"})),
+        ...(list.evening||[]).map(p=>({...p,session:"evening"})),
+      ];
+  const t = pills.length;
+  const k = pills.filter(p => log[p.session]?.[p.id]).length;
+  return {pct: t ? Math.round(k/t*100) : 0, taken: k, total: t};
+}
+
 function App(){
   const [view,setView]          = useState("today");
   const [pillList,setPillList]  = useState(null);
-  const [archived,setArchived]  = useState({morning:[],night:[]});
+  const [archived,setArchived]  = useState({morning:[],lunch:[],evening:[]});
   const [todayLog,setTodayLog]  = useState(null);
   const [history,setHistory]    = useState([]);
   const [adding,setAdding]      = useState(null);
@@ -626,7 +638,7 @@ function App(){
   const [dietTab,setDietTab]    = useState("eat");
   const [menuOpen,setMenuOpen]  = useState(null);
   const [editing,setEditing]    = useState(null);
-  const [detailSheet,setDetailSheet] = useState(null); // {pill, session, accent}
+  const [detailSheet,setDetailSheet] = useState(null);
 
   useEffect(()=>{
     const h=e=>{e.preventDefault();setInstallPrompt(e);};
@@ -639,17 +651,18 @@ function App(){
     (async()=>{
       await migrateFromLS();
       let list=await dbGet(PILL_LIST_KEY)||DEFAULT_PILLS;
-      // Migrate night→evening
       if(list.night&&!list.evening){
         list={...list,evening:list.night,lunch:list.lunch||[]};
         delete list.night;
         await dbSet(PILL_LIST_KEY,list);
       }
       if(!list.lunch) list={...list,lunch:[]};
-      // Archive any expired pills on load
       list=await archiveExpired(list);
       setPillList(list);
-      const arch=await dbGet(ARCHIVED_KEY)||{morning:[],night:[]};
+      const arch=await dbGet(ARCHIVED_KEY)||{morning:[],lunch:[],evening:[]};
+      // Normalise legacy night key
+      if(arch.night&&!arch.evening){arch.evening=arch.night;delete arch.night;}
+      if(!arch.lunch) arch.lunch=[];
       setArchived(arch);
       const today=todayStr();
       let log=await dbGet(dayKey(today));
@@ -682,7 +695,7 @@ function App(){
   }
 
   async function toggleHistoryTaken(date,session,id){
-    const existing=await dbGet(dayKey(date))||{morning:{},night:{}};
+    const existing=await dbGet(dayKey(date))||{morning:{},lunch:{},evening:{}};
     const newLog={...existing,[session]:{...existing[session],[id]:!existing[session]?.[id]}};
     await dbSet(dayKey(date),newLog);
     setHistory(prev=>prev.map(h=>h.date===date?{...h,log:newLog}:h));
@@ -721,17 +734,6 @@ function App(){
     setEditing(null);
   }
 
-  function dayScore(log,list){
-    if(!log||!list)return{pct:0,taken:0,total:0};
-    const all=[...(list.morning||[]),...(list.lunch||[]),...(list.evening||[])];
-    const t=all.length;
-    const k=all.filter(p=>{
-      const s=list.morning.find(x=>x.id===p.id)?"morning":list.lunch?.find(x=>x.id===p.id)?"lunch":"evening";
-      return log[s]?.[p.id];
-    }).length;
-    return{pct:t?Math.round(k/t*100):0,taken:k,total:t};
-  }
-
   const sessions=pillList?[
     {key:"morning",label:"Morning",Icon:IconSun,  accent:"var(--acc)",   iconBg:"var(--acc-soft)",   iconColor:"var(--acc)"},
     {key:"lunch",  label:"Lunch",  Icon:IconFork, accent:"var(--green)", iconBg:"rgba(52,199,89,0.12)", iconColor:"var(--green)"},
@@ -746,15 +748,12 @@ function App(){
 
   // ── History view ──────────────────────────────────────────────
   if(view==="history"){
-    // Build a combined timeline: history entries + archive events
-    // Archive events: one entry per archived pill, keyed by endDate
     const archiveEvents=[];
     for(const session of ["morning","lunch","evening"]){
       for(const pill of (archived[session]||[])){
         if(pill.endDate) archiveEvents.push({date:pill.endDate, pill, session});
       }
     }
-    // Group archive events by date
     const archiveByDate={};
     for(const ev of archiveEvents){
       if(!archiveByDate[ev.date]) archiveByDate[ev.date]=[];
@@ -791,12 +790,18 @@ function App(){
 
           <div style={{padding:"16px 16px 0"}}>
             {selectedDay?(()=>{
+              // Build the pill list active on this specific day
+              const activePills = buildActivePillsForDate(selectedDay, pillList, archived);
               const dayLog=history.find(h=>h.date===selectedDay)?.log;
+              // Group by session for display
+              const bySession = {morning:[], lunch:[], evening:[]};
+              for (const p of activePills) bySession[p.session].push(p);
+
               return sessions.map(({key,label,Icon,accent,iconBg,iconColor})=>(
                 <GroupCard key={key} label={label}>
-                  {(pillList[key]||[]).length===0
+                  {bySession[key].length===0
                     ?<div style={{padding:"16px 18px",color:"var(--t3)",fontSize:15,fontStyle:"italic"}}>No medicines</div>
-                    :(pillList[key]||[]).map((pill,i)=>{
+                    :bySession[key].map((pill,i)=>{
                       const t=dayLog?.[key]?.[pill.id]??false;
                       return(
                         <GroupRow key={pill.id} first={i===0}
@@ -831,10 +836,7 @@ function App(){
                 {history.length===0&&Object.keys(archiveByDate).length===0
                   ?<div style={{padding:"20px 18px",color:"var(--t3)",fontSize:15,fontStyle:"italic",textAlign:"center"}}>No history yet</div>
                   :(()=>{
-                    // Collect all dates: history + archive event dates
-                    const historyDates=new Set(history.map(h=>h.date));
                     const allArchiveDates=Object.keys(archiveByDate);
-                    // All dates to show, sorted newest first
                     const allDates=[...new Set([...history.map(h=>h.date),...allArchiveDates])].sort((a,b)=>b.localeCompare(a));
                     let rowIndex=0;
                     return allDates.map(date=>{
@@ -842,9 +844,8 @@ function App(){
                       const archEntries=archiveByDate[date]||[];
                       const elements=[];
 
-                      // Archive event line (shown before the log row for that date)
                       if(archEntries.length>0){
-                        archEntries.forEach((ev,ai)=>{
+                        archEntries.forEach((ev)=>{
                           const isFirst=rowIndex===0;
                           rowIndex++;
                           elements.push(
@@ -862,14 +863,15 @@ function App(){
                         });
                       }
 
-                      // Regular history row
                       if(histEntry){
-                        const{pct,taken:tk,total:tt}=dayScore(histEntry.log,pillList);
+                        const{pct,taken:tk,total:tt}=dayScore(histEntry.log, pillList, archived, date);
                         const isToday=date===todayStr();
                         const col=pct===100?"var(--green)":pct>=50?"var(--acc)":"var(--red)";
                         const C=2*Math.PI*13;
                         const isFirst=rowIndex===0;
                         rowIndex++;
+                        // Dots: pills active on this specific date
+                        const activePillsForDots = buildActivePillsForDate(date, pillList, archived);
                         elements.push(
                           <GroupRow key={date} first={isFirst} onClick={()=>setSelectedDay(date)}>
                             <div style={{display:"flex",alignItems:"center",gap:13,padding:"13px 16px"}}>
@@ -898,11 +900,10 @@ function App(){
                                 <div style={{fontSize:13,color:"var(--t2)",marginTop:2}}>{tk} of {tt} medicines taken</div>
                               </div>
                               <div style={{display:"flex",flexWrap:"wrap",gap:3,width:32,justifyContent:"flex-end",flexShrink:0}}>
-                                {[...(pillList.morning||[]),...(pillList.lunch||[]),...(pillList.evening||[])].map(p=>{
-                                  const s=pillList.morning.find(x=>x.id===p.id)?"morning":pillList.lunch?.find(x=>x.id===p.id)?"lunch":"evening";
-                                  return<div key={p.id} style={{width:7,height:7,borderRadius:"50%",
-                                    background:histEntry.log?.[s]?.[p.id]?"var(--green)":"var(--sep)"}}/>;
-                                })}
+                                {activePillsForDots.map(p=>(
+                                  <div key={p.id} style={{width:7,height:7,borderRadius:"50%",
+                                    background:histEntry.log?.[p.session]?.[p.id]?"var(--green)":"var(--sep)"}}/>
+                                ))}
                               </div>
                               <div style={{color:"var(--t3)",marginLeft:2}}><IconChevron/></div>
                             </div>
@@ -932,7 +933,6 @@ function App(){
     <div style={{minHeight:"100vh",background:"var(--bg)",paddingBottom:40}} className="fade-up">
       <div style={{maxWidth:480,margin:"0 auto"}}>
 
-        {/* Header */}
         <div style={{
           background:"var(--card)",borderRadius:"0 0 20px 20px",
           boxShadow:"0 2px 8px rgba(0,0,0,0.07)",marginBottom:4,
@@ -980,7 +980,6 @@ function App(){
                   ⬇︎ Add to Home Screen
                 </button>
               )}
-
             </div>
           </div>
         </div>
@@ -995,7 +994,6 @@ function App(){
             const allDone=pills.length>0&&pills.every(p=>log[p.id]);
             const prog=pills.filter(p=>log[p.id]).length;
 
-            // Pill card colors palette
             const CARD_COLORS=["#5B8DEF","#E06B6B","#8B63CC","#4BAE8A","#E09B3D","#6BC5D2"];
             function pillColor(pill){
               if(pill.color) return pill.color;
@@ -1005,7 +1003,6 @@ function App(){
 
             return(
               <div key={key} style={{marginBottom:24}}>
-                {/* Section header */}
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
                   padding:"0 4px",marginBottom:10}}>
                   <span style={{display:"flex",alignItems:"center",gap:6,
@@ -1043,7 +1040,6 @@ function App(){
                   </div>
                 )}
 
-                {/* Pill cards */}
                 <div style={{display:"flex",flexDirection:"column",gap:10}}>
                   {pills.map(pill=>{
                     const t=!!log[pill.id];
@@ -1088,7 +1084,6 @@ function App(){
                           opacity:t?0.6:1,
                           transition:"opacity 0.2s",
                         }}>
-                        {/* Colored square left */}
                         <div style={{
                           width:72,height:72,flexShrink:0,
                           background:col,
@@ -1096,7 +1091,6 @@ function App(){
                         }}>
                           <ShapeIcon shape={pill.shape} size={32} color="rgba(255,255,255,0.9)"/>
                         </div>
-                        {/* Content */}
                         <div style={{flex:1,minWidth:0,padding:"0 14px"}}>
                           <div style={{fontSize:16,fontWeight:700,color:"var(--t1)",
                             whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
@@ -1113,7 +1107,6 @@ function App(){
                             </div>
                           )}
                         </div>
-                        {/* Radio right */}
                         <div style={{paddingRight:16,flexShrink:0}}>
                           <button
                             onClick={e=>{e.stopPropagation();toggleTaken(key,pill.id);}}
@@ -1134,7 +1127,6 @@ function App(){
             );
           })}
 
-          {/* If all sections empty, show a prompt */}
           {sessions.every(({key})=>(pillList[key]||[]).length===0)&&!adding&&(
             <div style={{
               background:"var(--card)",borderRadius:16,
@@ -1163,7 +1155,6 @@ function App(){
             </div>
           )}
 
-          {/* Diet Section */}
           <div style={{padding:"0 4px",marginBottom:14,marginTop:24}}>
             <div style={{fontSize:24,fontWeight:800,color:"var(--t1)",letterSpacing:"-0.03em",lineHeight:1.1}}>Diet Recommendations</div>
           </div>
@@ -1254,12 +1245,10 @@ function App(){
           }}>
             <style>{`@keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
 
-            {/* Handle */}
             <div style={{display:"flex",justifyContent:"center",paddingTop:12,paddingBottom:8}}>
               <div style={{width:36,height:4,borderRadius:2,background:"var(--sep)"}}/>
             </div>
 
-            {/* Header: shape icon + name/dose + delete */}
             <div style={{display:"flex",alignItems:"center",gap:14,padding:"4px 20px 16px"}}>
               <div style={{width:52,height:52,borderRadius:14,flexShrink:0,
                 background:detailSheet.color||"var(--bg2)",
@@ -1281,7 +1270,6 @@ function App(){
               </button>
             </div>
 
-            {/* PillForm in edit mode, no cancel — closing sheet = cancel */}
             <div style={{borderTop:"0.5px solid var(--sep)"}}>
               <PillForm
                 initial={detailSheet.pill}
@@ -1345,7 +1333,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
 <script>
 if("serviceWorker"in navigator){
-  const sw=`const C="pr-v33",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});`;
+  const sw=`const C="pr-v34",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});`;
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
