@@ -16,73 +16,95 @@
     const ml=document.createElement("link");ml.rel="manifest";ml.href=URL.createObjectURL(bl);document.head.appendChild(ml);
   </script>
 
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet"/>
+
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
     html,body{height:100%;overscroll-behavior:none;}
     body{
-      font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif;
+      font-family:'DM Sans',system-ui,sans-serif;
       -webkit-tap-highlight-color:transparent;
       -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
     }
     #root{min-height:100%;}
-    input,button{font-family:inherit;}
+    input,button{font-family:'DM Sans',system-ui,sans-serif;}
     button{cursor:pointer;border:none;outline:none;-webkit-tap-highlight-color:transparent;}
     input{outline:none;}
     .safe-bottom{padding-bottom:env(safe-area-inset-bottom,24px);}
+    .serif{font-family:'DM Serif Display',Georgia,serif;}
 
     :root{
-      --bg:       #f5efe8;
-      --bg2:      #ede5da;
-      --card:     #ffffff;
-      --card2:    #faf7f4;
-      --sep:      rgba(0,0,0,0.08);
-      --tab-active: #ffffff;
-      --tab-list:   #e2d9ce;
-      --t1:       #1a1a1a;
-      --t2:       #6b6b6b;
-      --t3:       rgba(0,0,0,0.30);
-      --acc:      #e05e00;
-      --acc-soft: rgba(224,94,0,0.10);
-      --blue:     #007aff;
-      --green:    #34c759;
-      --red:      #ff3b30;
-      --gold:     #b45309;
-      --gold-bg:  rgba(180,83,9,0.08);
-      --violet:   #7c3aed;
-      --violet-bg:rgba(124,58,237,0.09);
+      --bg:        #f3ece3;
+      --bg2:       #e8ddd1;
+      --card:      #ffffff;
+      --card2:     #faf7f3;
+      --sep:       rgba(0,0,0,0.065);
+      --tab-active:#ffffff;
+      --tab-list:  #e2d9ce;
+      --t1:        #18181b;
+      --t2:        #5c5c66;
+      --t3:        rgba(0,0,0,0.28);
+      --acc:       #d45500;
+      --acc-soft:  rgba(212,85,0,0.10);
+      --acc-glow:  rgba(212,85,0,0.22);
+      --blue:      #0066e8;
+      --green:     #1eb854;
+      --red:       #e5342c;
+      --gold:      #a34d00;
+      --gold-bg:   rgba(163,77,0,0.09);
+      --violet:    #6d28d9;
+      --violet-bg: rgba(109,40,217,0.09);
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.10),0 1px 3px rgba(0,0,0,0.06);
+      --shadow-lg: 0 8px 28px rgba(0,0,0,0.13),0 2px 6px rgba(0,0,0,0.07);
       --sat: env(safe-area-inset-top, 0px);
     }
     @media(prefers-color-scheme:dark){
       :root{
-        --bg:       #1c1c1e;
-        --bg2:      #2c2c2e;
-        --card:     #2c2c2e;
-        --card2:    #3a3a3c;
-        --sep:      rgba(255,255,255,0.10);
-        --tab-active: #48484a;
-        --tab-list:   #1c1c1e;
-        --t1:       #f2f2f7;
-        --t2:       #aeaeb2;
-        --t3:       rgba(255,255,255,0.28);
-        --acc:      #ff9500;
-        --acc-soft: rgba(255,149,0,0.14);
-        --blue:     #0a84ff;
-        --green:    #30d158;
-        --red:      #ff453a;
-        --gold:     #fcd34d;
-        --gold-bg:  rgba(252,211,77,0.10);
-        --violet:   #bf5af2;
-        --violet-bg:rgba(191,90,242,0.13);
+        --bg:        #161618;
+        --bg2:       #232325;
+        --card:      #252528;
+        --card2:     #2e2e32;
+        --sep:       rgba(255,255,255,0.08);
+        --tab-active:#3a3a3e;
+        --tab-list:  #161618;
+        --t1:        #f0f0f5;
+        --t2:        #a0a0ab;
+        --t3:        rgba(255,255,255,0.26);
+        --acc:       #ff6b1a;
+        --acc-soft:  rgba(255,107,26,0.14);
+        --acc-glow:  rgba(255,107,26,0.28);
+        --blue:      #3b9eff;
+        --green:     #2ed15f;
+        --red:       #ff4d45;
+        --gold:      #f5a623;
+        --gold-bg:   rgba(245,166,35,0.12);
+        --violet:    #a855f7;
+        --violet-bg: rgba(168,85,247,0.13);
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.28),0 1px 2px rgba(0,0,0,0.18);
+        --shadow-md: 0 4px 12px rgba(0,0,0,0.36),0 1px 3px rgba(0,0,0,0.22);
+        --shadow-lg: 0 8px 28px rgba(0,0,0,0.45),0 2px 6px rgba(0,0,0,0.24);
       }
     }
 
-    @keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.4)}75%{transform:scale(0.9)}100%{transform:scale(1)}}
-    .pop{animation:pop 0.35s cubic-bezier(0.34,1.56,0.64,1);}
-    @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-    .fade-up{animation:fadeUp 0.25s ease both;}
-    .ring-fill{transition:stroke-dashoffset 0.7s cubic-bezier(0.4,0,0.2,1);}
+    /* ── Animations ── */
+    @keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.42)}75%{transform:scale(0.92)}100%{transform:scale(1)}}
+    .pop{animation:pop 0.38s cubic-bezier(0.34,1.56,0.64,1);}
+
+    @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    .fade-up{animation:fadeUp 0.3s cubic-bezier(0.22,1,0.36,1) both;}
+
+    @keyframes pillIn{from{opacity:0;transform:translateY(8px) scale(0.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+    .pill-card{animation:pillIn 0.32s cubic-bezier(0.22,1,0.36,1) both;}
+
+    .ring-fill{transition:stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1);}
+
     .row-press:active{background:var(--bg2)!important;transition:none;}
-    .tab-btn{transition:background 0.15s,color 0.15s,box-shadow 0.15s;}
+    .pill-press:active{transform:scale(0.985);transition:transform 0.1s;}
+    .pill-press{transition:transform 0.2s cubic-bezier(0.34,1.56,0.64,1),opacity 0.2s;}
   </style>
 </head>
 <body style="background:var(--bg)">
@@ -164,12 +186,10 @@ const DEFAULT_PILLS={
 
 const TIMING_OPTIONS=[
   {value:"upon_waking",   label:"Upon waking"},
-  {value:"morning",       label:"Morning"},
   {value:"before_meal",   label:"Before meal"},
   {value:"during_meal",   label:"During meal"},
   {value:"after_meal",    label:"After meal"},
   {value:"between_meals", label:"Between meals"},
-  {value:"evening",       label:"Evening"},
   {value:"before_bedtime",label:"Before bedtime"},
 ];
 
@@ -202,40 +222,66 @@ async function searchDrugs(query){
   }catch(e){return [];}
 }
 
-const SODIUM={
-  why:"Prednisone causes kidneys to retain sodium and water, raising blood pressure and causing swelling (edema). Staying under 2,000 mg/day helps counteract these side effects and protect your heart.",
-  eat:[
-    {emoji:"🥦",label:"Fresh vegetables",note:"All fresh/frozen veg — no added salt"},
-    {emoji:"🍎",label:"Fresh fruit",note:"Naturally very low in sodium"},
-    {emoji:"🍗",label:"Lean proteins",note:"Chicken, turkey, fish — cooked at home"},
-    {emoji:"🥚",label:"Eggs",note:"Whole eggs or whites"},
-    {emoji:"🌾",label:"Whole grains",note:"Oats, brown rice, unsalted quinoa"},
-    {emoji:"🫘",label:"Dried legumes",note:"Lentils & beans cooked from scratch"},
-    {emoji:"🥑",label:"Avocado",note:"High potassium — helps offset sodium"},
-    {emoji:"🧄",label:"Herbs & spices",note:"Garlic, lemon, pepper — flavour freely"},
-    {emoji:"🥛",label:"Low-fat dairy",note:"Unsalted cheese, plain yogurt"},
-    {emoji:"🫙",label:"Unsalted nuts",note:"Raw almonds, walnuts — not roasted"},
-  ],
-  avoid:[
-    {emoji:"🧂",label:"Added table salt",note:"Remove the shaker from the table"},
-    {emoji:"🥫",label:"Canned soups & veg",note:"Often 800–1,200 mg per serving"},
-    {emoji:"🍟",label:"Fast food",note:"One meal can hit 2,000+ mg"},
-    {emoji:"🥩",label:"Processed meats",note:"Bacon, deli meats, sausage, hot dogs"},
-    {emoji:"🧀",label:"Processed cheese",note:"American, spreadable, string cheese"},
-    {emoji:"🫙",label:"Pickles & olives",note:"Extremely high salt brine"},
-    {emoji:"🍕",label:"Frozen meals",note:"Usually 600–1,500 mg per portion"},
-    {emoji:"🧃",label:"Bottled sauces",note:"Soy sauce, ketchup, teriyaki, marinades"},
-    {emoji:"🍞",label:"Bread & crackers",note:"Surprisingly salty — always check labels"},
-    {emoji:"🥨",label:"Salted snacks",note:"Chips, pretzels, crackers, popcorn"},
-  ],
-  tips:[
-    {icon:"💧",text:"Drink plenty of water to help flush excess sodium from your body."},
-    {icon:"🏷️",text:"Read nutrition labels. Aim for under 140 mg sodium per serving."},
-    {icon:"🍋",text:"Use lemon juice, vinegar, and fresh herbs for bold flavour without salt."},
-    {icon:"🫀",text:"Eat potassium-rich foods — bananas, sweet potatoes, spinach — to balance sodium."},
-    {icon:"🍳",text:"Cook from scratch when possible. Restaurant and packaged food is the biggest source."},
-  ],
+// ── Per-drug key info ─────────────────────────────────────────────
+// Keyed by lowercase fragment of drug name for fuzzy matching.
+// Only genuinely important points — not exhaustive.
+const DRUG_TIPS={
+  prednisone:{
+    color:"var(--gold)",
+    colorBg:"var(--gold-bg)",
+    emoji:"💊",
+    label:"Prednisone",
+    points:[
+      {icon:"🧂",text:"Keep sodium under 2,000 mg/day. Prednisone causes kidneys to retain salt and water, raising blood pressure and causing swelling."},
+      {icon:"🥛",text:"Take with food or milk to reduce stomach irritation."},
+      {icon:"🍌",text:"Eat potassium-rich foods (bananas, spinach, sweet potato) — prednisone depletes potassium."},
+      {icon:"🦴",text:"Take calcium and vitamin D if not already prescribed — prednisone reduces bone density over time."},
+      {icon:"⚠️",text:"Never stop abruptly. Taper dose as directed by your doctor."},
+    ],
+  },
+  cyclobenzaprine:{
+    color:"var(--violet)",
+    colorBg:"var(--violet-bg)",
+    emoji:"💊",
+    label:"Cyclobenzaprine",
+    points:[
+      {icon:"🍺",text:"No alcohol. The combination amplifies sedation and can dangerously slow breathing."},
+      {icon:"🚗",text:"Do not drive until you know how it affects you — impairs coordination and reaction time."},
+      {icon:"⏱️",text:"Intended for short-term use (2–3 weeks). Not effective beyond that window."},
+      {icon:"💊",text:"Avoid antidepressants and St. John's Wort without medical advice — risk of serotonin syndrome."},
+    ],
+  },
+  pregabalin:{
+    color:"var(--blue)",
+    colorBg:"rgba(0,122,255,0.09)",
+    emoji:"💊",
+    label:"Pregabalin",
+    points:[
+      {icon:"🍺",text:"No alcohol. Both are CNS depressants — combined they can cause dangerous sedation and respiratory depression."},
+      {icon:"🚗",text:"Do not drive until you know how it affects you — dizziness and drowsiness are common early on."},
+      {icon:"⚠️",text:"Never stop abruptly. Taper with your doctor to avoid withdrawal symptoms."},
+    ],
+  },
+  lyrica:{
+    // brand name alias
+    ref:"pregabalin",
+  },
+  flexeril:{
+    ref:"cyclobenzaprine",
+  },
 };
+
+function getDrugTips(name){
+  if(!name) return null;
+  const lower = name.toLowerCase();
+  for(const [key, val] of Object.entries(DRUG_TIPS)){
+    if(lower.includes(key)){
+      if(val.ref) return DRUG_TIPS[val.ref];
+      return val;
+    }
+  }
+  return null;
+}
 
 // ── Shape SVG icons ───────────────────────────────────────────────
 const ShapeCapsule=({size=20,color="currentColor"})=>(
@@ -317,7 +363,7 @@ function GroupCard({label,children,action}){
           {action}
         </div>
       )}
-      <div style={{background:"var(--card)",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+      <div style={{background:"var(--card)",borderRadius:16,overflow:"hidden",boxShadow:"var(--shadow-sm)"}}>
         {children}
       </div>
     </div>
@@ -420,8 +466,7 @@ function PillForm({initial, accent, onSave, onCancel, submitLabel="Add", default
           background:"var(--card)",color:"var(--t1)",fontSize:15,marginBottom:16,display:"block",
           boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}/>
 
-      {!initial?.id&&(
-        <div style={{marginBottom:16}}>
+      <div style={{marginBottom:16}}>
           <div style={{fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",
             letterSpacing:"0.06em",marginBottom:8}}>Time of day</div>
           <div style={{display:"flex",gap:6}}>
@@ -438,7 +483,6 @@ function PillForm({initial, accent, onSave, onCancel, submitLabel="Add", default
             ))}
           </div>
         </div>
-      )}
 
       <div style={{marginBottom:16}}>
         <div style={{fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",
@@ -635,7 +679,6 @@ function App(){
   const [selectedDay,setSelectedDay] = useState(null);
   const [installPrompt,setInstallPrompt] = useState(null);
   const [installed,setInstalled]= useState(false);
-  const [dietTab,setDietTab]    = useState("eat");
   const [menuOpen,setMenuOpen]  = useState(null);
   const [editing,setEditing]    = useState(null);
   const [detailSheet,setDetailSheet] = useState(null);
@@ -735,9 +778,9 @@ function App(){
   }
 
   const sessions=pillList?[
-    {key:"morning",label:"Morning",Icon:IconSun,  accent:"var(--acc)",   iconBg:"var(--acc-soft)",   iconColor:"var(--acc)"},
-    {key:"lunch",  label:"Lunch",  Icon:IconFork, accent:"var(--green)", iconBg:"rgba(52,199,89,0.12)", iconColor:"var(--green)"},
-    {key:"evening",label:"Evening",Icon:IconMoon, accent:"var(--violet)",iconBg:"var(--violet-bg)", iconColor:"var(--violet)"},
+    {key:"morning",label:"Morning",Icon:IconSun,  accent:"var(--acc)"},
+    {key:"lunch",  label:"Lunch",  Icon:IconFork, accent:"var(--acc)"},
+    {key:"evening",label:"Evening",Icon:IconMoon, accent:"var(--acc)"},
   ]:[];
 
   if(loading)return(
@@ -764,26 +807,27 @@ function App(){
       <div style={{minHeight:"100vh",background:"var(--bg)",paddingBottom:40}} className="fade-up">
         <div style={{maxWidth:480,margin:"0 auto"}}>
           <div style={{
-            background:"var(--card)",borderRadius:"0 0 20px 20px",
-            boxShadow:"0 2px 8px rgba(0,0,0,0.07)",marginBottom:4,
+            background:"var(--card)",borderRadius:"0 0 24px 24px",
+            boxShadow:"var(--shadow-md)",marginBottom:6,
             paddingTop:"calc(env(safe-area-inset-top, 20px) + 16px)",
-            paddingBottom:16,paddingLeft:20,paddingRight:20,
+            paddingBottom:18,paddingLeft:20,paddingRight:20,
+            backgroundImage:"radial-gradient(ellipse at 110% -10%, var(--acc-glow) 0%, transparent 60%)",
           }}>
             <button onClick={()=>{setView("today");setSelectedDay(null);}}
               style={{display:"flex",alignItems:"center",gap:6,padding:"0",
-                background:"transparent",color:"var(--blue)",fontSize:17,fontWeight:400,marginBottom:12}}>
+                background:"transparent",color:"var(--blue)",fontSize:16,fontWeight:500,marginBottom:14,letterSpacing:"-0.01em"}}>
               <IconBack/> Today
             </button>
             {selectedDay?(()=>{
               const{weekday,date}=formatDayHeader(selectedDay);
               return(<>
-                <div style={{fontSize:13,color:"var(--t2)",fontWeight:500,marginBottom:2}}>{weekday}</div>
-                <h1 style={{fontSize:32,fontWeight:800,color:"var(--t1)",letterSpacing:"-0.03em",lineHeight:1.1}}>{date}</h1>
+                <div style={{fontSize:12,color:"var(--t3)",fontWeight:500,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:4}}>{weekday}</div>
+                <h1 className="serif" style={{fontSize:34,fontWeight:400,color:"var(--t1)",letterSpacing:"-0.01em",lineHeight:1.1}}>{date}</h1>
               </>);
             })():(
               <>
-                <div style={{fontSize:13,color:"var(--t2)",fontWeight:500,marginBottom:2}}>Last 30 days</div>
-                <h1 style={{fontSize:32,fontWeight:800,color:"var(--t1)",letterSpacing:"-0.03em",lineHeight:1.1}}>History</h1>
+                <div style={{fontSize:12,color:"var(--t3)",fontWeight:500,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:4}}>Last 30 days</div>
+                <h1 className="serif" style={{fontSize:34,fontWeight:400,color:"var(--t1)",letterSpacing:"-0.01em",lineHeight:1.1}}>History</h1>
               </>
             )}
           </div>
@@ -926,7 +970,7 @@ function App(){
   const total=sessions.reduce((s,{key})=>s+(pillList[key]||[]).length,0);
   const taken=sessions.reduce((s,{key})=>{const p=pillList[key]||[],l=todayLog[key]||{};return s+p.filter(x=>l[x.id]).length;},0);
   const pct=total?taken/total:0;
-  const R=32,C=2*Math.PI*R;
+  const R=33,C=2*Math.PI*R;
   const ringCol=pct===1?"var(--green)":"var(--acc)";
 
   return(
@@ -934,42 +978,43 @@ function App(){
       <div style={{maxWidth:480,margin:"0 auto"}}>
 
         <div style={{
-          background:"var(--card)",borderRadius:"0 0 20px 20px",
-          boxShadow:"0 2px 8px rgba(0,0,0,0.07)",marginBottom:4,
+          background:"var(--card)",
+          borderRadius:"0 0 24px 24px",
+          boxShadow:"var(--shadow-md)",
+          marginBottom:6,
           paddingTop:"calc(env(safe-area-inset-top, 20px) + 20px)",
-          paddingBottom:16,paddingLeft:20,paddingRight:20,
+          paddingBottom:18,paddingLeft:20,paddingRight:20,
+          backgroundImage:"radial-gradient(ellipse at 110% -10%, var(--acc-glow) 0%, transparent 60%)",
         }}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
             <div>
-              <div style={{fontSize:13,color:"var(--t2)",fontWeight:500,lineHeight:1.2}}>
+              <div style={{fontSize:12,color:"var(--t3)",fontWeight:500,letterSpacing:"0.06em",textTransform:"uppercase",lineHeight:1.2,marginBottom:4}}>
                 {new Date().toLocaleDateString("en-US",{weekday:"long"})}
               </div>
-              <h1 style={{fontSize:34,fontWeight:800,color:"var(--t1)",letterSpacing:"-0.03em",lineHeight:1.05}}>
+              <h1 className="serif" style={{fontSize:36,fontWeight:400,color:"var(--t1)",letterSpacing:"-0.01em",lineHeight:1.05}}>
                 {new Date().toLocaleDateString("en-US",{month:"long",day:"numeric"})}
               </h1>
             </div>
             <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,flexShrink:0}}>
-              <div style={{position:"relative",width:72,height:72}}>
-                <svg width="72" height="72" style={{transform:"rotate(-90deg)"}}>
-                  <circle cx="36" cy="36" r={R} fill="none" stroke="var(--sep)" strokeWidth="5"/>
-                  <circle cx="36" cy="36" r={R} fill="none" stroke={ringCol} strokeWidth="5"
+              <div style={{position:"relative",width:76,height:76}}>
+                <svg width="76" height="76" style={{transform:"rotate(-90deg)"}}>
+                  <circle cx="38" cy="38" r={R} fill="none" stroke="var(--sep)" strokeWidth="5.5"/>
+                  <circle cx="38" cy="38" r={R} fill="none" stroke={ringCol} strokeWidth="5.5"
                     strokeDasharray={C} strokeDashoffset={C*(1-pct)} strokeLinecap="round" className="ring-fill"/>
                 </svg>
                 <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:0}}>
-                  <span style={{fontSize:16,fontWeight:800,color:ringCol,lineHeight:1,letterSpacing:"-0.02em"}}>{taken}/{total}</span>
-                  <span style={{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em",marginTop:3}}>taken</span>
+                  <span style={{fontSize:17,fontWeight:700,color:ringCol,lineHeight:1,letterSpacing:"-0.03em"}}>{taken}/{total}</span>
+                  <span style={{fontSize:9,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.08em",marginTop:3,fontWeight:600}}>taken</span>
                 </div>
               </div>
-              {taken===total&&total>0&&(
-                <span style={{fontSize:11,fontWeight:600,color:"var(--green)",letterSpacing:"0.02em"}}>All done 🎉</span>
-              )}
+
             </div>
           </div>
 
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:14,marginBottom:4}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:16,marginBottom:4}}>
             <button onClick={()=>setView("history")}
               style={{display:"flex",alignItems:"center",gap:5,background:"transparent",
-                color:"var(--blue)",fontSize:15,fontWeight:500,padding:"0"}}>
+                color:"var(--blue)",fontSize:15,fontWeight:500,padding:"0",letterSpacing:"-0.01em"}}>
               View History <IconChevron/>
             </button>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -984,46 +1029,35 @@ function App(){
           </div>
         </div>
 
-        <div style={{padding:"16px 16px 0"}}>
-          <div style={{padding:"0 4px",marginBottom:14,marginTop:10}}>
-            <div style={{fontSize:24,fontWeight:800,color:"var(--t1)",letterSpacing:"-0.03em",lineHeight:1.1}}>Today's Medications</div>
+        <div style={{padding:"18px 20px 0"}}>
+          <div style={{marginBottom:20,marginTop:8,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div className="serif" style={{fontSize:26,fontWeight:400,color:"var(--t1)",letterSpacing:"-0.01em",lineHeight:1.1}}>Today's Medications</div>
+            <button onClick={()=>setAdding(adding?null:sessions[0].key)}
+              style={{display:"flex",alignItems:"center",gap:5,
+                padding:"7px 14px",borderRadius:20,
+                background:"var(--acc-soft)",color:"var(--acc)",
+                fontSize:13,fontWeight:600,border:"none",cursor:"pointer",flexShrink:0}}>
+              <IconPlus/> Add
+            </button>
           </div>
 
-          {sessions.filter(({key})=>(pillList[key]||[]).length>0||adding===key).map(({key,label,Icon,accent,iconBg,iconColor})=>{
+          {sessions.filter(({key})=>(pillList[key]||[]).length>0||adding===key).map(({key,label,Icon,accent})=>{
             const pills=pillList[key]||[], log=todayLog[key]||{};
             const allDone=pills.length>0&&pills.every(p=>log[p.id]);
             const prog=pills.filter(p=>log[p.id]).length;
 
-            const CARD_COLORS=["#5B8DEF","#E06B6B","#8B63CC","#4BAE8A","#E09B3D","#6BC5D2"];
-            function pillColor(pill){
-              if(pill.color) return pill.color;
-              const idx=Math.abs(pill.id.split("").reduce((a,c)=>a+c.charCodeAt(0),0))%CARD_COLORS.length;
-              return CARD_COLORS[idx];
-            }
-
             return(
-              <div key={key} style={{marginBottom:24}}>
+              <div key={key} style={{marginBottom:28}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-                  padding:"0 4px",marginBottom:10}}>
+                  marginBottom:10}}>
                   <span style={{display:"flex",alignItems:"center",gap:6,
-                    fontSize:13,fontWeight:600,color:"var(--t2)",textTransform:"uppercase",letterSpacing:"0.04em"}}>
-                    <span style={{display:"inline-flex",width:18,height:18,borderRadius:5,
-                      background:iconBg,alignItems:"center",justifyContent:"center",color:iconColor}}>
-                      <Icon/>
-                    </span>
+                    fontSize:12,fontWeight:600,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.07em"}}>
+                    <Icon/>
                     {label}
-                    {!allDone&&pills.length>0&&(
-                      <span style={{fontWeight:500,textTransform:"none",letterSpacing:0,color:"var(--t3)"}}>
-                        {prog}/{pills.length}
-                      </span>
-                    )}
-                    {allDone&&<span style={{fontWeight:600,color:"var(--green)",textTransform:"none",letterSpacing:0}}>✓</span>}
                   </span>
-                  <button onClick={()=>setAdding(adding===key?null:key)}
-                    style={{width:28,height:28,borderRadius:8,background:"var(--acc-soft)",
-                      display:"flex",alignItems:"center",justifyContent:"center",color:"var(--acc)"}}>
-                    <IconPlus/>
-                  </button>
+                  <span style={{fontSize:13,fontWeight:500,color:allDone?"var(--green)":"var(--t3)"}}>
+                    {allDone?"✓ Done":`${prog} / ${pills.length}`}
+                  </span>
                 </div>
 
                 {adding===key&&(
@@ -1045,7 +1079,6 @@ function App(){
                     const t=!!log[pill.id];
                     const isEditing=editing?.id===pill.id;
                     const tl=timingLabel(pill.timing);
-                    const col=pillColor(pill);
                     let durationInfo=null;
                     if(pill.durationDays!=null&&pill.startDate){
                       const endDate=addDays(pill.startDate,pill.durationDays);
@@ -1073,30 +1106,32 @@ function App(){
 
                     return(
                       <div key={pill.id}
-                        onClick={()=>setDetailSheet({pill,session:key,accent,color:col})}
+                        className="pill-card pill-press"
+                        onClick={()=>setDetailSheet({pill,session:key,accent})}
                         style={{
                           display:"flex",alignItems:"center",
                           background:"var(--card)",
-                          borderRadius:16,
+                          borderRadius:18,
                           overflow:"hidden",
-                          boxShadow:"0 1px 4px rgba(0,0,0,0.08)",
+                          boxShadow:"var(--shadow-md)",
                           cursor:"pointer",
-                          opacity:t?0.6:1,
-                          transition:"opacity 0.2s",
-                        }}>
+                          opacity:t?0.55:1,
+                          animationDelay:`${pills.indexOf(pill)*60}ms`,
+                        }}
+                      >
                         <div style={{
-                          width:72,height:72,flexShrink:0,
-                          background:col,
+                          width:68,height:72,flexShrink:0,
+                          background:"var(--bg2)",
                           display:"flex",alignItems:"center",justifyContent:"center",
                         }}>
-                          <ShapeIcon shape={pill.shape} size={32} color="rgba(255,255,255,0.9)"/>
+                          <ShapeIcon shape={pill.shape} size={28} color="var(--t3)"/>
                         </div>
                         <div style={{flex:1,minWidth:0,padding:"0 14px"}}>
-                          <div style={{fontSize:16,fontWeight:700,color:"var(--t1)",
+                          <div style={{fontSize:16,fontWeight:600,color:"var(--t1)",letterSpacing:"-0.01em",
                             whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
                             {pill.name}
                           </div>
-                          <div style={{fontSize:13,color:"var(--t2)",marginTop:2}}>
+                          <div style={{fontSize:13,color:"var(--t2)",marginTop:2,fontWeight:400}}>
                             {SHAPES.find(s=>s.value===pill.shape)?.label||"Capsule"} · {pill.dose}
                           </div>
                           {(tl||durationInfo)&&(
@@ -1155,69 +1190,62 @@ function App(){
             </div>
           )}
 
-          <div style={{padding:"0 4px",marginBottom:14,marginTop:24}}>
-            <div style={{fontSize:24,fontWeight:800,color:"var(--t1)",letterSpacing:"-0.03em",lineHeight:1.1}}>Diet Recommendations</div>
-          </div>
-          <div style={{background:"var(--card)",borderRadius:14,padding:"14px 16px",
-            marginBottom:12,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-              <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <span style={{color:"var(--green)",display:"flex"}}><IconLeaf/></span>
-                <span style={{fontSize:15,fontWeight:700,color:"var(--t1)"}}>Low Sodium Guide</span>
-              </div>
-              <div style={{background:"var(--gold-bg)",borderRadius:20,padding:"4px 10px",display:"inline-flex",alignItems:"baseline",gap:4}}>
-                <span style={{fontSize:14,fontWeight:800,color:"var(--gold)",letterSpacing:"-0.02em"}}>&lt;2,000 mg</span>
-                <span style={{fontSize:11,color:"var(--gold)",opacity:0.7,fontWeight:500}}>/day</span>
-              </div>
-            </div>
-            <p style={{fontSize:14,lineHeight:1.6,color:"var(--t2)",margin:0}}>
-              <strong style={{color:"var(--t1)",fontWeight:600}}>Prednisone</strong> causes kidneys to retain sodium and water, raising blood pressure and causing swelling (edema). Staying under 2,000 mg/day helps counteract these side effects and protect your heart.
-            </p>
-          </div>
-          <div style={{background:"var(--card)",borderRadius:14,overflow:"hidden",marginBottom:10,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-            <div style={{display:"flex",background:"var(--card)",padding:"8px 8px",gap:4}}>
-              {[["eat","✅","Eat"],["avoid","🚫","Avoid"],["tips","💡","Tips"]].map(([tab,emoji,name])=>{
-                const active=dietTab===tab;
-                return(
-                  <button key={tab} onClick={()=>setDietTab(tab)}
-                    style={{flex:1,padding:"9px 8px",borderRadius:8,
-                      background:active?"var(--card2)":"transparent",
-                      boxShadow:active?"0 1px 3px rgba(0,0,0,0.2),0 1px 2px rgba(0,0,0,0.12)":"none",
-                      display:"flex",alignItems:"center",justifyContent:"center",gap:6,
-                      transition:"background 0.15s,box-shadow 0.15s"}}>
-                    <span style={{fontSize:15,lineHeight:1}}>{emoji}</span>
-                    <span style={{fontSize:13,fontWeight:active?600:500,color:active?"var(--t1)":"var(--t2)",transition:"color 0.15s"}}>{name}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <div style={{height:"0.5px",background:"var(--sep)"}}/>
-            {(dietTab==="eat"?SODIUM.eat:dietTab==="avoid"?SODIUM.avoid:[]).map((item,i)=>(
-              <div key={i} style={{position:"relative"}}>
-                {i>0&&<div style={{position:"absolute",top:0,left:16,right:0,height:"0.5px",background:"var(--sep)"}}/>}
-                <div style={{display:"flex",alignItems:"center",gap:13,padding:"12px 16px"}}>
-                  <span style={{fontSize:26,flexShrink:0,lineHeight:1}}>{item.emoji}</span>
-                  <div style={{fontSize:15,fontWeight:600,color:"var(--t1)"}}>{item.label}</div>
+          {(()=>{
+            const allPills=[
+              ...(pillList.morning||[]),
+              ...(pillList.lunch||[]),
+              ...(pillList.evening||[]),
+            ];
+            const cards=allPills.map(p=>getDrugTips(p.name)).filter(Boolean)
+              // Deduplicate by label
+              .filter((t,i,arr)=>arr.findIndex(x=>x.label===t.label)===i);
+
+            return(
+              <div style={{marginTop:28}}>
+                <div style={{marginBottom:14}}>
+                  <div className="serif" style={{fontSize:26,fontWeight:400,color:"var(--t1)",letterSpacing:"-0.01em",lineHeight:1.1}}>Recommendations</div>
                 </div>
+                {cards.length===0?(
+                  <div style={{
+                    background:"var(--card)",borderRadius:16,
+                    boxShadow:"0 1px 4px rgba(0,0,0,0.08)",
+                    padding:"28px 24px",
+                    display:"flex",flexDirection:"column",alignItems:"center",gap:10,
+                    textAlign:"center",
+                  }}>
+                    <span style={{fontSize:32}}>✅</span>
+                    <div style={{fontSize:15,fontWeight:600,color:"var(--t1)"}}>No alerts for your current medications</div>
+                    <div style={{fontSize:13,color:"var(--t2)",lineHeight:1.5}}>Tips will appear here when you have medications with important interactions or precautions.</div>
+                  </div>
+                ):cards.map(tip=>(
+                  <div key={tip.label} style={{background:"var(--card)",borderRadius:14,overflow:"hidden",
+                    marginBottom:12,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+                    {/* Card header */}
+                    <div style={{display:"flex",alignItems:"center",gap:10,
+                      padding:"13px 16px",borderBottom:"0.5px solid var(--sep)"}}>
+                      <div style={{width:7,height:7,borderRadius:"50%",flexShrink:0,background:"var(--t3)"}}/>
+                      <span style={{fontSize:15,fontWeight:600,color:"var(--t1)"}}>{tip.label}</span>
+                    </div>
+                    {/* Points */}
+                    {tip.points.map((pt,i)=>(
+                      <div key={i} style={{position:"relative"}}>
+                        {i>0&&<div style={{position:"absolute",top:0,left:16,right:0,height:"0.5px",background:"var(--sep)"}}/>}
+                        <div style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 16px"}}>
+                          <span style={{fontSize:18,flexShrink:0,lineHeight:1.4}}>{pt.icon}</span>
+                          <p style={{margin:0,fontSize:14,lineHeight:1.6,color:"var(--t2)",fontWeight:500}}>{pt.text}</p>
+                        </div>
+                      </div>
+                    ))}
+                    <div style={{padding:"10px 16px",borderTop:"0.5px solid var(--sep)"}}>
+                      <p style={{margin:0,fontSize:11,color:"var(--t3)",fontStyle:"italic"}}>
+                        Always follow your doctor's instructions. This is general information only.
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-            {dietTab==="tips"&&SODIUM.tips.map((tip,i)=>(
-              <div key={i} style={{position:"relative"}}>
-                {i>0&&<div style={{position:"absolute",top:0,left:16,right:0,height:"0.5px",background:"var(--sep)"}}/>}
-                <div style={{display:"flex",alignItems:"flex-start",gap:13,padding:"13px 16px"}}>
-                  <span style={{fontSize:22,flexShrink:0,lineHeight:1.3,marginTop:1}}>{tip.icon}</span>
-                  <p style={{margin:0,fontSize:14,lineHeight:1.6,color:"var(--t2)",fontWeight:500}}>{tip.text}</p>
-                </div>
-              </div>
-            ))}
-            {dietTab==="tips"&&(
-              <div style={{padding:"11px 16px",borderTop:"0.5px solid var(--sep)"}}>
-                <p style={{margin:0,fontSize:12,color:"var(--t3)",fontStyle:"italic",lineHeight:1.5}}>
-                  Always follow your doctor's specific dietary instructions. This is general information only.
-                </p>
-              </div>
-            )}
-          </div>
+            );
+          })()}
 
           <div style={{textAlign:"center",fontSize:12,color:"var(--t3)",paddingTop:16,paddingBottom:12,letterSpacing:"0.02em"}} className="safe-bottom">
             Saved locally · Resets at midnight
@@ -1251,9 +1279,9 @@ function App(){
 
             <div style={{display:"flex",alignItems:"center",gap:14,padding:"4px 20px 16px"}}>
               <div style={{width:52,height:52,borderRadius:14,flexShrink:0,
-                background:detailSheet.color||"var(--bg2)",
+                background:"var(--bg2)",
                 display:"flex",alignItems:"center",justifyContent:"center"}}>
-                <ShapeIcon shape={detailSheet.pill.shape} size={28} color="rgba(255,255,255,0.9)"/>
+                <ShapeIcon shape={detailSheet.pill.shape} size={28} color="var(--t2)"/>
               </div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:20,fontWeight:700,color:"var(--t1)",
@@ -1277,12 +1305,24 @@ function App(){
                 submitLabel="Save"
                 noAutoFocus={true}
                 onSave={async(data)=>{
-                  const session=detailSheet.session;
+                  const oldSession=detailSheet.session;
+                  const newSession=data.session||oldSession;
                   const id=detailSheet.pill.id;
                   const{session:_,...rest}=data;
-                  const newList={...pillList,[session]:pillList[session].map(p=>
-                    p.id===id?{...p,...rest}:p
-                  )};
+                  let newList={...pillList};
+                  if(newSession!==oldSession){
+                    // Move pill to new session
+                    newList[oldSession]=(newList[oldSession]||[]).filter(p=>p.id!==id);
+                    newList[newSession]=[...(newList[newSession]||[]),{...detailSheet.pill,...rest}];
+                    // Update today's log
+                    const newLog={...todayLog};
+                    delete newLog[oldSession][id];
+                    newLog[newSession]={...newLog[newSession],[id]:false};
+                    setTodayLog(newLog);
+                    await dbSet(dayKey(todayStr()),newLog);
+                  } else {
+                    newList[oldSession]=newList[oldSession].map(p=>p.id===id?{...p,...rest}:p);
+                  }
                   setPillList(newList);
                   await dbSet(PILL_LIST_KEY,newList);
                   setDetailSheet(null);
@@ -1333,7 +1373,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
 <script>
 if("serviceWorker"in navigator){
-  const sw=`const C="pr-v34",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});`;
+  const sw=`const C="pr-v42",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});`;
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
