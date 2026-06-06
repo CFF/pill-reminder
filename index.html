@@ -723,6 +723,7 @@ function App(){
   const [editing,setEditing]    = useState(null);
   const [detailSheet,setDetailSheet] = useState(null);
   const [profile,setProfile]    = useState({name:"",age:"",weight:"",height:""});
+  const fileInputRef            = useRef(null);
 
   useEffect(()=>{
     const h=e=>{e.preventDefault();setInstallPrompt(e);};
@@ -1041,8 +1042,6 @@ function App(){
       alert("Import successful!");
     }catch(e){alert("Import failed — invalid file.");}
   }
-
-  const fileInputRef=useRef(null);
 
   if(view==="settings") return(
     <div style={{minHeight:"100vh",background:"var(--bg)",paddingBottom:90}} className="fade-up">
@@ -1532,7 +1531,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
 <script>
 if("serviceWorker"in navigator){
-  const sw=`const C="pr-v45",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});`;
+  const sw=`const C="pr-v46",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});`;
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
