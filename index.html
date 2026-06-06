@@ -183,6 +183,7 @@ const DEFAULT_PILLS={
   morning:[{id:"m1",name:"Vitamin D",dose:"1 tablet"}],
   lunch:  [],
   evening:[{id:"n1",name:"Melatonin",dose:"1 tablet"}],
+  as_needed:[],
 };
 
 const TIMING_OPTIONS=[
@@ -425,6 +426,8 @@ function PillForm({initial, accent, onSave, onCancel, submitLabel="Add", default
   const [durationDays,setDurationDays] = useState(initial?.durationDays||7);
   const [startDate,setStartDate] = useState(initial?.startDate||todayStr());
   const [session,setSession]     = useState(initial?.session||defaultSession||"morning");
+  const [asNeeded,setAsNeeded]   = useState(initial?.asNeeded!=null?initial.asNeeded:initial?.id?false:true);
+  const [maxDailyDose,setMaxDailyDose] = useState(initial?.maxDailyDose||3);
   const [suggestions,setSuggestions] = useState([]);
   const [showSuggestions,setShowSuggestions] = useState(false);
   const searchTimer = useRef(null);
@@ -456,7 +459,9 @@ function PillForm({initial, accent, onSave, onCancel, submitLabel="Add", default
       timing:timing||null,
       startDate,
       durationDays:ongoing?null:Number(durationDays),
-      session,
+      session:asNeeded?"as_needed":session,
+      asNeeded,
+      maxDailyDose:asNeeded?Number(maxDailyDose):null,
     });
   }
 
@@ -527,6 +532,40 @@ function PillForm({initial, accent, onSave, onCancel, submitLabel="Add", default
       </div>
       <div style={{marginBottom:16}}>
           <div style={{fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",
+            letterSpacing:"0.06em",marginBottom:8}}>Schedule</div>
+          <div style={{background:"var(--card)",borderRadius:12,overflow:"hidden",
+            boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+              padding:"13px 16px",borderBottom:asNeeded?"none":"0.5px solid var(--sep)"}}>
+              <span style={{fontSize:15,color:"var(--t1)"}}>As needed</span>
+              <button onClick={()=>setAsNeeded(!asNeeded)}
+                style={{width:48,height:28,borderRadius:14,position:"relative",border:"none",
+                  background:asNeeded?accent:"var(--sep)",transition:"background 0.2s",cursor:"pointer"}}>
+                <div style={{position:"absolute",top:3,left:asNeeded?"23px":"3px",
+                  width:22,height:22,borderRadius:11,background:"#fff",
+                  boxShadow:"0 1px 3px rgba(0,0,0,0.25)",transition:"left 0.2s"}}/>
+              </button>
+            </div>
+            {asNeeded&&(
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+                padding:"11px 16px"}}>
+                <span style={{fontSize:15,color:"var(--t1)"}}>Max per day</span>
+                <div style={{display:"flex",alignItems:"center",gap:14}}>
+                  <button onClick={()=>setMaxDailyDose(Math.max(1,maxDailyDose-1))}
+                    style={{width:30,height:30,borderRadius:8,background:"var(--bg2)",border:"none",
+                      color:"var(--t1)",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>−</button>
+                  <span style={{fontSize:16,fontWeight:600,color:"var(--t1)",minWidth:28,textAlign:"center"}}>{maxDailyDose}</span>
+                  <button onClick={()=>setMaxDailyDose(maxDailyDose+1)}
+                    style={{width:30,height:30,borderRadius:8,background:"var(--bg2)",border:"none",
+                      color:"var(--t1)",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>+</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      {!asNeeded&&(
+      <div style={{marginBottom:16}}>
+          <div style={{fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",
             letterSpacing:"0.06em",marginBottom:8}}>Time of day</div>
           <div style={{display:"flex",gap:6}}>
             {[{v:"morning",l:"Morning"},{v:"lunch",l:"Lunch"},{v:"evening",l:"Evening"}].map(({v,l})=>(
@@ -542,18 +581,19 @@ function PillForm({initial, accent, onSave, onCancel, submitLabel="Add", default
             ))}
           </div>
         </div>
+      )}
 
 
-      <div style={{marginBottom:16}}>
+      {!asNeeded&&<div style={{marginBottom:16}}>
         <div style={{fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",
           letterSpacing:"0.06em",marginBottom:8}}>When to take</div>
-        <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
           {TIMING_OPTIONS.map(({value,label})=>{
             const active=timing===value;
             return(
               <button key={value} onClick={()=>setTiming(active?"":value)}
-                style={{padding:"8px 14px",borderRadius:20,fontSize:13,fontWeight:500,
-                  border:"none",
+                style={{padding:"9px 6px",borderRadius:12,fontSize:12,fontWeight:600,
+                  border:"none",textAlign:"center",
                   background:active?accent:"var(--card)",
                   color:active?"#fff":"var(--t2)",
                   boxShadow:active?"none":"0 1px 3px rgba(0,0,0,0.07)",
@@ -563,7 +603,7 @@ function PillForm({initial, accent, onSave, onCancel, submitLabel="Add", default
             );
           })}
         </div>
-      </div>
+      </div>}
 
       <div style={{marginBottom:20}}>
         <div style={{fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",
@@ -786,7 +826,10 @@ function HistoryView({view,setView,selectedDay,setSelectedDay,history,pillList,a
             const dayLog=history.find(h=>h.date===selectedDay)?.log;
             const bySession={morning:[],lunch:[],evening:[]};
             for(const p of activePills) bySession[p.session].push(p);
-            return sessions.map(({key,label,Icon,accent})=>(
+            const asNeededLog=dayLog?.as_needed||{};
+            const asNeededPillsForDay=(pillList.as_needed||[]).filter(p=>asNeededLog[p.id]?.length>0);
+            return(<>
+            {sessions.map(({key,label,Icon,accent})=>(
               <GroupCard key={key} label={label}>
                 {bySession[key].length===0
                   ?<div style={{padding:"16px 18px",color:"var(--t3)",fontSize:15,fontStyle:"italic"}}>No medicines</div>
@@ -818,7 +861,34 @@ function HistoryView({view,setView,selectedDay,setSelectedDay,history,pillList,a
                   })
                 }
               </GroupCard>
-            ));
+            ))}
+            {asNeededPillsForDay.length>0&&(
+              <GroupCard label="As needed">
+                {asNeededPillsForDay.map((pill,i)=>{
+                  const entries=asNeededLog[pill.id]||[];
+                  return(
+                    <GroupRow key={pill.id} first={i===0}>
+                      <div style={{display:"flex",alignItems:"center",gap:13,padding:"13px 16px"}}>
+                        <div style={{width:28,height:28,borderRadius:"50%",flexShrink:0,
+                          background:"var(--acc-soft)",
+                          display:"flex",alignItems:"center",justifyContent:"center",
+                          color:"var(--acc)",fontSize:13,fontWeight:700}}>
+                          {entries.length}×
+                        </div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:16,fontWeight:500,color:"var(--t1)",
+                            whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{pill.name}</div>
+                          <div style={{fontSize:13,color:"var(--t2)",marginTop:1}}>
+                            {entries.map(e=>e.time).join(", ")}
+                          </div>
+                        </div>
+                      </div>
+                    </GroupRow>
+                  );
+                })}
+              </GroupCard>
+            )}
+            </>);
           })():(
             <GroupCard label="Log">
               {history.length===0&&Object.keys(archiveByDate).length===0
@@ -1046,6 +1116,7 @@ function App(){
         await dbSet(PILL_LIST_KEY,list);
       }
       if(!list.lunch) list={...list,lunch:[]};
+      if(!list.as_needed) list={...list,as_needed:[]};
       list=await archiveExpired(list);
       setPillList(list);
       const arch=await dbGet(ARCHIVED_KEY)||{morning:[],lunch:[],evening:[]};
@@ -1068,7 +1139,7 @@ function App(){
     (list.morning||[]).forEach(p=>m[p.id]=false);
     (list.lunch||[]).forEach(p=>l[p.id]=false);
     (list.evening||[]).forEach(p=>e[p.id]=false);
-    return{morning:m,lunch:l,evening:e};
+    return{morning:m,lunch:l,evening:e,as_needed:{}};
   }
 
   const loadHistory=useCallback(async()=>{
@@ -1098,14 +1169,38 @@ function App(){
     const {session:_,...rest}=pillData;
     const pill={id,...rest};
     const newList={...pillList,[sess]:[...(pillList[sess]||[]),pill]};
-    const newLog={...todayLog,[sess]:{...todayLog[sess],[id]:false}};
+    let newLog={...todayLog};
+    if(sess!=="as_needed"){
+      newLog={...newLog,[sess]:{...newLog[sess],[id]:false}};
+    }
     setPillList(newList);setTodayLog(newLog);
     await dbSet(PILL_LIST_KEY,newList);
     await dbSet(dayKey(todayStr()),newLog);
     setAdding(null);
   }
 
+  async function takeAsNeeded(id){
+    const now=new Date();
+    const timeStr=`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
+    const existing=todayLog.as_needed?.[id]||[];
+    const newEntries=[...existing,{time:timeStr}];
+    const newLog={...todayLog,as_needed:{...todayLog.as_needed,[id]:newEntries}};
+    setTodayLog(newLog);
+    await dbSet(dayKey(todayStr()),newLog);
+    setFlash(id);setTimeout(()=>setFlash(null),400);
+  }
+
+  async function deleteAsNeededPill(id){
+    const newList={...pillList,as_needed:(pillList.as_needed||[]).filter(p=>p.id!==id)};
+    const newLog={...todayLog,as_needed:{...todayLog.as_needed}};
+    delete newLog.as_needed[id];
+    setPillList(newList);setTodayLog(newLog);
+    await dbSet(PILL_LIST_KEY,newList);
+    await dbSet(dayKey(todayStr()),newLog);
+  }
+
   async function deletePill(session,id){
+    if(session==="as_needed"){return deleteAsNeededPill(id);}
     const newList={...pillList,[session]:pillList[session].filter(p=>p.id!==id)};
     const newLog={...todayLog,[session]:{...todayLog[session]}};
     delete newLog[session][id];
@@ -1346,7 +1441,93 @@ function App(){
             );
           })}
 
-          {sessions.every(({key})=>(pillList[key]||[]).length===0)&&!adding&&(
+          {/* As-needed section */}
+          {(pillList.as_needed||[]).length>0&&(
+            <div style={{marginBottom:28}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                <span style={{display:"flex",alignItems:"center",gap:6,
+                  fontSize:12,fontWeight:600,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.07em"}}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/><path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                  As Needed
+                </span>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {(pillList.as_needed||[]).map(pill=>{
+                  const entries=todayLog.as_needed?.[pill.id]||[];
+                  const count=entries.length;
+                  const atMax=pill.maxDailyDose&&count>=pill.maxDailyDose;
+                  return(
+                    <div key={pill.id}
+                      className="pill-card pill-press"
+                      onClick={()=>setDetailSheet({pill,session:"as_needed",accent:"var(--acc)"})}
+                      style={{
+                        display:"flex",alignItems:"center",
+                        background:"var(--card)",
+                        borderRadius:18,
+                        overflow:"hidden",
+                        boxShadow:"var(--shadow-md)",
+                        cursor:"pointer",
+                        animationDelay:`${(pillList.as_needed||[]).indexOf(pill)*60}ms`,
+                      }}
+                    >
+                      <div style={{
+                        width:68,height:80,flexShrink:0,
+                        background:"var(--sep)",
+                        display:"flex",alignItems:"center",justifyContent:"center",
+                      }}>
+                        <ShapeIcon shape={pill.shape} size={28} color="var(--t3)"/>
+                      </div>
+                      <div style={{flex:1,minWidth:0,padding:"4px 14px"}}>
+                        <div style={{fontSize:16,fontWeight:600,color:"var(--t1)",letterSpacing:"-0.01em",
+                          whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                          {pill.name}
+                        </div>
+                        <div style={{fontSize:13,color:"var(--t2)",marginTop:2,fontWeight:400}}>
+                          {pill.dose}
+                        </div>
+                        {atMax&&(
+                          <div style={{fontSize:12,color:"var(--red)",marginTop:3,fontWeight:600}}>
+                            Max atteint ({pill.maxDailyDose}×)
+                          </div>
+                        )}
+                        {!atMax&&count>0&&(
+                          <div style={{fontSize:12,color:"var(--t3)",marginTop:3}}>
+                            {count}× today · {entries[entries.length-1].time}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{paddingRight:16,flexShrink:0}}>
+                        <button
+                          onClick={e=>{e.stopPropagation();if(!atMax)takeAsNeeded(pill.id);}}
+                          className={flash===pill.id?"pop":""}
+                          style={{
+                            position:"relative",
+                            width:34,height:34,borderRadius:"50%",
+                            border:"none",
+                            background:atMax?"var(--red)":count>0?"var(--acc-soft)":"var(--acc-soft)",
+                            display:"flex",alignItems:"center",justifyContent:"center",
+                            color:atMax?"#fff":"var(--acc)",
+                            fontSize:22,fontWeight:300,
+                            opacity:atMax?0.7:1,
+                            transition:"background 0.15s",
+                          }}>
+                          {atMax
+                            ?<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" strokeWidth="2"/><line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                            :<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>
+                          }
+                          {count>0&&!atMax&&<span style={{position:"absolute",top:-4,right:-4,background:"var(--acc)",color:"#fff",
+                            borderRadius:"50%",width:16,height:16,fontSize:10,fontWeight:700,
+                            display:"flex",alignItems:"center",justifyContent:"center"}}>{count}</span>}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {sessions.every(({key})=>(pillList[key]||[]).length===0)&&!adding&&(pillList.as_needed||[]).length===0&&(
             <div style={{
               background:"var(--card)",borderRadius:16,
               boxShadow:"0 1px 4px rgba(0,0,0,0.08)",
@@ -1379,6 +1560,7 @@ function App(){
               ...(pillList.morning||[]),
               ...(pillList.lunch||[]),
               ...(pillList.evening||[]),
+              ...(pillList.as_needed||[]),
             ];
             const cards=allPills.map(p=>getDrugTips(p.name)).filter(Boolean)
               // Deduplicate by label
@@ -1499,12 +1681,14 @@ function App(){
                     newList[newSession]=[...(newList[newSession]||[]),{...detailSheet.pill,...rest}];
                     // Update today's log
                     const newLog={...todayLog};
-                    delete newLog[oldSession][id];
-                    newLog[newSession]={...newLog[newSession],[id]:false};
+                    if(oldSession==="as_needed"){delete newLog.as_needed[id];}
+                    else{delete newLog[oldSession][id];}
+                    if(newSession==="as_needed"){newLog.as_needed={...newLog.as_needed,[id]:[]};}
+                    else{newLog[newSession]={...newLog[newSession],[id]:false};}
                     setTodayLog(newLog);
                     await dbSet(dayKey(todayStr()),newLog);
                   } else {
-                    newList[oldSession]=newList[oldSession].map(p=>p.id===id?{...p,...rest}:p);
+                    newList[oldSession]=(newList[oldSession]||[]).map(p=>p.id===id?{...p,...rest}:p);
                   }
                   setPillList(newList);
                   await dbSet(PILL_LIST_KEY,newList);
@@ -1558,7 +1742,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
 <script>
 if("serviceWorker"in navigator){
-  const sw=`const C="pr-v51",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});`;
+  const sw=`const C="pr-v52",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});`;
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
