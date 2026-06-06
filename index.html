@@ -827,6 +827,29 @@ function App(){
     {key:"evening",label:"Evening",Icon:IconMoon, accent:"var(--acc)"},
   ]:[];
 
+  async function exportData(){
+    const days=getLast30Days();
+    const logs={};
+    for(const d of days){const l=await dbGet(dayKey(d));if(l)logs[d]=l;}
+    const data={pillList,archived,logs,profile,exportedAt:new Date().toISOString()};
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download="pill-reminder-backup.json";a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function importData(file){
+    try{
+      const text=await file.text();
+      const data=JSON.parse(text);
+      if(data.pillList){await dbSet(PILL_LIST_KEY,data.pillList);setPillList(data.pillList);}
+      if(data.archived){await dbSet(ARCHIVED_KEY,data.archived);setArchived(data.archived);}
+      if(data.logs){for(const[d,l] of Object.entries(data.logs))await dbSet(dayKey(d),l);}
+      if(data.profile){await dbSet(PROFILE_KEY,data.profile);setProfile(data.profile);}
+      alert("Import successful!");
+    }catch(e){alert("Import failed — invalid file.");}
+  }
+
   if(loading)return(
     <div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div style={{color:"var(--t2)",fontSize:14}}>Loading…</div>
@@ -1014,35 +1037,6 @@ function App(){
   }
 
   // ── Settings view ─────────────────────────────────────────────
-  async function saveProfile(updates){
-    const newProfile={...profile,...updates};
-    setProfile(newProfile);
-    await dbSet(PROFILE_KEY,newProfile);
-  }
-
-  async function exportData(){
-    const days=getLast30Days();
-    const logs={};
-    for(const d of days){const l=await dbGet(dayKey(d));if(l)logs[d]=l;}
-    const data={pillList,archived,logs,profile,exportedAt:new Date().toISOString()};
-    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");a.href=url;a.download="pill-reminder-backup.json";a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  async function importData(file){
-    try{
-      const text=await file.text();
-      const data=JSON.parse(text);
-      if(data.pillList){await dbSet(PILL_LIST_KEY,data.pillList);setPillList(data.pillList);}
-      if(data.archived){await dbSet(ARCHIVED_KEY,data.archived);setArchived(data.archived);}
-      if(data.logs){for(const[d,l] of Object.entries(data.logs))await dbSet(dayKey(d),l);}
-      if(data.profile){await dbSet(PROFILE_KEY,data.profile);setProfile(data.profile);}
-      alert("Import successful!");
-    }catch(e){alert("Import failed — invalid file.");}
-  }
-
   if(view==="settings") return(
     <div style={{minHeight:"100vh",background:"var(--bg)",paddingBottom:90}} className="fade-up">
       <div style={{maxWidth:480,margin:"0 auto"}}>
@@ -1531,7 +1525,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
 <script>
 if("serviceWorker"in navigator){
-  const sw=`const C="pr-v46",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});`;
+  const sw=`const C="pr-v47",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});`;
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
