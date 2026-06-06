@@ -1043,20 +1043,6 @@ function App(){
 
   const fileInputRef=useRef(null);
 
-  const ProfileField=({field,label,placeholder,type="text"})=>(
-    <div style={{position:"relative"}}>
-      <div style={{position:"absolute",top:0,left:16,right:0,height:"0.5px",background:"var(--sep)"}}/>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}>
-        <span style={{fontSize:15,color:"var(--t2)",fontWeight:500}}>{label}</span>
-        <input type={type} value={profile[field]||""} placeholder={placeholder}
-          onChange={e=>saveProfile({[field]:e.target.value})}
-          style={{border:"none",background:"transparent",color:"var(--t1)",
-            fontSize:15,fontWeight:500,textAlign:"right",width:120,
-            WebkitAppearance:"none"}}/>
-      </div>
-    </div>
-  );
-
   if(view==="settings") return(
     <div style={{minHeight:"100vh",background:"var(--bg)",paddingBottom:90}} className="fade-up">
       <div style={{maxWidth:480,margin:"0 auto"}}>
@@ -1074,16 +1060,22 @@ function App(){
           <div style={{marginBottom:28}}>
             <div style={{fontSize:12,fontWeight:600,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:10}}>Profile</div>
             <div style={{background:"var(--card)",borderRadius:16,overflow:"hidden",boxShadow:"var(--shadow-sm)"}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}>
-                <span style={{fontSize:15,color:"var(--t2)",fontWeight:500}}>Name</span>
-                <input type="text" value={profile.name||""} placeholder="Your name"
-                  onChange={e=>saveProfile({name:e.target.value})}
-                  style={{border:"none",background:"transparent",color:"var(--t1)",
-                    fontSize:15,fontWeight:500,textAlign:"right",width:160,WebkitAppearance:"none"}}/>
-              </div>
-              <ProfileField field="age" label="Age" placeholder="—" type="number"/>
-              <ProfileField field="weight" label="Weight (kg)" placeholder="—" type="number"/>
-              <ProfileField field="height" label="Height (cm)" placeholder="—" type="number"/>
+              {[{field:"name",label:"Name",placeholder:"Your name",type:"text",width:160},
+                {field:"age",label:"Age",placeholder:"—",type:"number",width:120},
+                {field:"weight",label:"Weight (kg)",placeholder:"—",type:"number",width:120},
+                {field:"height",label:"Height (cm)",placeholder:"—",type:"number",width:120}
+              ].map(({field,label,placeholder,type,width},i)=>(
+                <div key={field} style={{position:"relative"}}>
+                  {i>0&&<div style={{position:"absolute",top:0,left:16,right:0,height:"0.5px",background:"var(--sep)"}}/>}
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}>
+                    <span style={{fontSize:15,color:"var(--t2)",fontWeight:500}}>{label}</span>
+                    <input type={type} value={profile[field]||""} placeholder={placeholder}
+                      onChange={e=>{const v=e.target.value;const newP={...profile,[field]:v};setProfile(newP);dbSet(PROFILE_KEY,newP);}}
+                      style={{border:"none",background:"transparent",color:"var(--t1)",
+                        fontSize:15,fontWeight:500,textAlign:"right",width,WebkitAppearance:"none"}}/>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -1528,36 +1520,6 @@ function App(){
         </>,
         document.body
       )}
-
-      {/* Portal dropdown */}
-      {menuOpen&&ReactDOM.createPortal(
-        <>
-          <div onClick={()=>setMenuOpen(null)} style={{position:"fixed",inset:0,zIndex:999}}/>
-          <div style={{position:"fixed",top:menuOpen.top,right:menuOpen.right,zIndex:1000,
-            background:"var(--card)",borderRadius:12,
-            boxShadow:"0 4px 24px rgba(0,0,0,0.18),0 1px 4px rgba(0,0,0,0.10)",
-            minWidth:150,overflow:"hidden"}}>
-            <button
-              onClick={e=>{e.stopPropagation();setEditing({session:menuOpen.session,id:menuOpen.pill.id});setMenuOpen(null);}}
-              style={{width:"100%",display:"flex",alignItems:"center",gap:10,
-                padding:"14px 16px",background:"transparent",
-                color:"var(--t1)",fontSize:15,fontWeight:500,textAlign:"left",
-                borderBottom:"0.5px solid var(--sep)"}}>
-              <span style={{color:"var(--blue)",display:"flex"}}><IconPencil/></span>
-              Edit
-            </button>
-            <button
-              onClick={e=>{e.stopPropagation();deletePill(menuOpen.session,menuOpen.pill.id);setMenuOpen(null);}}
-              style={{width:"100%",display:"flex",alignItems:"center",gap:10,
-                padding:"14px 16px",background:"transparent",
-                color:"var(--red)",fontSize:15,fontWeight:500,textAlign:"left"}}>
-              <span style={{display:"flex"}}><IconTrash/></span>
-              Delete
-            </button>
-          </div>
-        </>,
-        document.body
-      )}
       <TabBar/>
     </div>
     </>
@@ -1569,7 +1531,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
 <script>
 if("serviceWorker"in navigator){
-  const sw=`const C="pr-v43",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});`;
+  const sw=`const C="pr-v44",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});`;
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
