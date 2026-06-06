@@ -233,11 +233,11 @@ const DRUG_TIPS={
     emoji:"💊",
     label:"Prednisone",
     points:[
-      {icon:"🧂",text:"Keep sodium under 2,000 mg/day. Prednisone causes kidneys to retain salt and water, raising blood pressure and causing swelling."},
-      {icon:"🥛",text:"Take with food or milk to reduce stomach irritation."},
-      {icon:"🍌",text:"Eat potassium-rich foods (bananas, spinach, sweet potato) — prednisone depletes potassium."},
-      {icon:"🦴",text:"Take calcium and vitamin D if not already prescribed — prednisone reduces bone density over time."},
-      {icon:"⚠️",text:"Never stop abruptly. Taper dose as directed by your doctor."},
+      {icon:"Waves",text:"Keep sodium under 2,000 mg/day. Prednisone causes kidneys to retain salt and water, raising blood pressure and causing swelling."},
+      {icon:"Utensils",text:"Take with food or milk to reduce stomach irritation."},
+      {icon:"Salad",text:"Eat potassium-rich foods (bananas, spinach, sweet potato) — prednisone depletes potassium."},
+      {icon:"Bone",text:"Take calcium and vitamin D if not already prescribed — prednisone reduces bone density over time."},
+      {icon:"AlertTriangle",text:"Never stop abruptly. Taper dose as directed by your doctor."},
     ],
   },
   cyclobenzaprine:{
@@ -246,10 +246,10 @@ const DRUG_TIPS={
     emoji:"💊",
     label:"Cyclobenzaprine",
     points:[
-      {icon:"🍺",text:"No alcohol. The combination amplifies sedation and can dangerously slow breathing."},
-      {icon:"🚗",text:"Do not drive until you know how it affects you — impairs coordination and reaction time."},
-      {icon:"⏱️",text:"Intended for short-term use (2–3 weeks). Not effective beyond that window."},
-      {icon:"💊",text:"Avoid antidepressants and St. John's Wort without medical advice — risk of serotonin syndrome."},
+      {icon:"GlassWater",text:"No alcohol. The combination amplifies sedation and can dangerously slow breathing."},
+      {icon:"Car",text:"Do not drive until you know how it affects you — impairs coordination and reaction time."},
+      {icon:"Timer",text:"Intended for short-term use (2–3 weeks). Not effective beyond that window."},
+      {icon:"Pill",text:"Avoid antidepressants and St. John's Wort without medical advice — risk of serotonin syndrome."},
     ],
   },
   pregabalin:{
@@ -258,9 +258,9 @@ const DRUG_TIPS={
     emoji:"💊",
     label:"Pregabalin",
     points:[
-      {icon:"🍺",text:"No alcohol. Both are CNS depressants — combined they can cause dangerous sedation and respiratory depression."},
-      {icon:"🚗",text:"Do not drive until you know how it affects you — dizziness and drowsiness are common early on."},
-      {icon:"⚠️",text:"Never stop abruptly. Taper with your doctor to avoid withdrawal symptoms."},
+      {icon:"GlassWater",text:"No alcohol. Both are CNS depressants — combined they can cause dangerous sedation and respiratory depression."},
+      {icon:"Car",text:"Do not drive until you know how it affects you — dizziness and drowsiness are common early on."},
+      {icon:"AlertTriangle",text:"Never stop abruptly. Taper with your doctor to avoid withdrawal symptoms."},
     ],
   },
   lyrica:{
@@ -372,6 +372,23 @@ const IconArchive=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none
 const IconTabToday=({active})=><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="17" rx="3" stroke="currentColor" strokeWidth={active?"2":"1.7"} fill="none"/><line x1="3" y1="9" x2="21" y2="9" stroke="currentColor" strokeWidth={active?"2":"1.7"}/><line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" strokeWidth={active?"2":"1.7"} strokeLinecap="round"/><line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" strokeWidth={active?"2":"1.7"} strokeLinecap="round"/>{active&&<rect x="7" y="13" width="4" height="4" rx="1" fill="currentColor"/>}</svg>;
 const IconTabHistory=({active})=><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth={active?"2":"1.7"}/><polyline points="12 7 12 12 15.5 14.5" stroke="currentColor" strokeWidth={active?"2":"1.7"} strokeLinecap="round" strokeLinejoin="round"/></svg>;
 const IconTabSettings=({active})=><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth={active?"2":"1.7"}/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" strokeWidth={active?"2":"1.7"} strokeLinecap="round"/></svg>;
+// ── Lucide tip icons (inline SVG, matches lucide style) ──────────────
+function TipIcon({name, size=16, color="currentColor"}){
+  const props={width:size,height:size,viewBox:"0 0 24 24",fill:"none",stroke:color,strokeWidth:"2",strokeLinecap:"round",strokeLinejoin:"round"};
+  const icons={
+    Waves:       <svg {...props}><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></svg>,
+    Utensils:    <svg {...props}><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>,
+    Salad:       <svg {...props}><path d="M7 21h10"/><path d="M12 21a9 9 0 0 0 9-9H3a9 9 0 0 0 9 9z"/><path d="M11.38 12a2.4 2.4 0 0 1-.4-4.77 2.4 2.4 0 0 1 3.2-3.19 2.4 2.4 0 0 1 3.47-.63 2.4 2.4 0 0 1 3.37 3.37 2.4 2.4 0 0 1-1.1 3.7 2.51 2.51 0 0 1 .03 1.1"/><path d="m13 12 4-4"/><path d="M10.9 7.25A3.99 3.99 0 0 0 4 10c0 .73.2 1.41.54 2"/></svg>,
+    Bone:        <svg {...props}><path d="M17 10c.7-.7 1.69 0 2.5 0a2.5 2.5 0 1 0 0-5 .5.5 0 0 1-.5-.5 2.5 2.5 0 1 0-5 0c0 .81.7 1.8 0 2.5l-7 7c-.7.7-1.69 0-2.5 0a2.5 2.5 0 0 0 0 5c.28 0 .5.22.5.5a2.5 2.5 0 1 0 5 0c0-.81-.7-1.8 0-2.5Z"/></svg>,
+    AlertTriangle:<svg {...props}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+    GlassWater:  <svg {...props}><path d="M15.2 22H8.8a2 2 0 0 1-2-1.79L5 3h14l-1.81 17.21A2 2 0 0 1 15.2 22z"/><path d="M6 12a5 5 0 0 1 6 0 5 5 0 0 0 6 0"/></svg>,
+    Car:         <svg {...props}><path d="M19 17H5v1a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-5l2.5-6.5A2 2 0 0 1 6.36 5h11.28a2 2 0 0 1 1.86 1.5L22 13v5a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1z"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/></svg>,
+    Timer:       <svg {...props}><line x1="10" y1="2" x2="14" y2="2"/><line x1="12" y1="14" x2="12" y2="10"/><circle cx="12" cy="14" r="8"/></svg>,
+    Pill:        <svg {...props}><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7z"/><line x1="8.5" y1="8.5" x2="15.5" y2="15.5"/></svg>,
+  };
+  return icons[name]||icons["Pill"];
+}
+
 
 function GroupCard({label,children,action}){
   return(
@@ -976,7 +993,7 @@ function SettingsView({view,setView,setSelectedDay,profile,setProfile,pillList,a
               <div style={{height:"0.5px",background:"var(--sep)"}}/>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}>
                 <span style={{fontSize:15,color:"var(--t2)"}}>Version</span>
-                <span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v48</span>
+                <span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v50</span>
               </div>
               <div style={{height:"0.5px",background:"var(--sep)"}}/>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}>
@@ -1391,15 +1408,14 @@ function App(){
                     {/* Card header */}
                     <div style={{display:"flex",alignItems:"center",gap:10,
                       padding:"13px 16px",borderBottom:"0.5px solid var(--sep)"}}>
-                      <div style={{width:7,height:7,borderRadius:"50%",flexShrink:0,background:"var(--t3)"}}/>
-                      <span style={{fontSize:15,fontWeight:600,color:"var(--t1)"}}>{tip.label}</span>
+                      <span style={{fontSize:13,fontWeight:600,color:"var(--t1)",letterSpacing:"0.08em",fontVariant:"small-caps",textTransform:"lowercase"}}>{tip.label}</span>
                     </div>
                     {/* Points */}
                     {tip.points.map((pt,i)=>(
                       <div key={i} style={{position:"relative"}}>
                         {i>0&&<div style={{position:"absolute",top:0,left:16,right:0,height:"0.5px",background:"var(--sep)"}}/>}
                         <div style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 16px"}}>
-                          <span style={{fontSize:18,flexShrink:0,lineHeight:1.4}}>{pt.icon}</span>
+                          <span style={{flexShrink:0,display:"flex",alignItems:"center",color:"var(--t2)",marginTop:2}}><TipIcon name={pt.icon} size={16}/></span>
                           <p style={{margin:0,fontSize:14,lineHeight:1.6,color:"var(--t2)",fontWeight:500}}>{pt.text}</p>
                         </div>
                       </div>
@@ -1543,7 +1559,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
 <script>
 if("serviceWorker"in navigator){
-  const sw=`const C="pr-v49",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});`;
+  const sw=`const C="pr-v50",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});`;
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
