@@ -73,13 +73,14 @@
 const {useState,useEffect,useCallback,useRef}=React;
 const PILL_LIST_KEY="pr:list",ARCHIVED_KEY="pr:archived",PROFILE_KEY="pr:profile";
 const dayKey=d=>`pr:day:${d}`;
-
-function todayStr(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
+const asNeededDayKey=d=>`pr:asneeded:${d}`;
+function fmtTime(ts){const d=new Date(ts);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");}
+function todayStr(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 function formatDayHeader(str){const[y,m,d]=str.split("-").map(Number);const dt=new Date(y,m-1,d);return{weekday:dt.toLocaleDateString("en-US",{weekday:"long"}),date:dt.toLocaleDateString("en-US",{month:"long",day:"numeric"})};}
 function formatShort(str){const[y,m,d]=str.split("-").map(Number);return new Date(y,m-1,d).toLocaleDateString("en-US",{month:"short",day:"numeric"});}
 function formatFull(str){const[y,m,d]=str.split("-").map(Number);return new Date(y,m-1,d).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});}
-function getLast30Days(){return Array.from({length:30},(_,i)=>{const d=new Date();d.setDate(d.getDate()-i);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;});}
-function addDays(str,n){const[y,m,d]=str.split("-").map(Number);const dt=new Date(y,m-1,d);dt.setDate(dt.getDate()+n);return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`;}
+function getLast30Days(){return Array.from({length:30},(_,i)=>{const d=new Date();d.setDate(d.getDate()-i);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");});}
+function addDays(str,n){const[y,m,d]=str.split("-").map(Number);const dt=new Date(y,m-1,d);dt.setDate(dt.getDate()+n);return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");}
 
 const DB_NAME="pill-reminder",DB_VER=1,DB_STORE="kv";
 let _db=null;
@@ -100,7 +101,7 @@ async function searchDrugs(query){
   if(!query||query.length<2)return[];
   try{
     const q=encodeURIComponent(query);
-    const res=await fetch(`https://api.fda.gov/drug/label.json?search=openfda.brand_name:${q}+openfda.generic_name:${q}&limit=10`);
+    const res=await fetch("https://api.fda.gov/drug/label.json?search=openfda.brand_name:"+q+"+openfda.generic_name:"+q+"&limit=10");
     if(!res.ok)return[];
     const data=await res.json();
     const results=[],seen=new Set();
@@ -108,7 +109,7 @@ async function searchDrugs(query){
     for(const r of (data.results||[])){
       const brands=r.openfda?.brand_name||[],generics=r.openfda?.generic_name||[];
       for(const name of brands){const k=name.toLowerCase();if(!seen.has(k)){seen.add(k);results.push({name:toTitle(name),sub:generics[0]?toTitle(generics[0]):""});}}
-      for(const name of generics){const k=name.toLowerCase();if(!seen.has(k)){seen.add(k);results.push({name:toTitle(name),sub:brands[0]?`Brand: ${toTitle(brands[0])}`:"Generic"});}}
+      for(const name of generics){const k=name.toLowerCase();if(!seen.has(k)){seen.add(k);results.push({name:toTitle(name),sub:brands[0]?"Brand: "+toTitle(brands[0]):"Generic"});}}
       if(results.length>=8)break;
     }
     return results.slice(0,8);
@@ -126,7 +127,7 @@ const DRUG_TIPS={
   cyclobenzaprine:{color:"var(--violet)",colorBg:"var(--violet-bg)",label:"Cyclobenzaprine",points:[
     {icon:"GlassWater",text:"No alcohol. The combination amplifies sedation and can dangerously slow breathing."},
     {icon:"Car",text:"Do not drive until you know how it affects you — impairs coordination and reaction time."},
-    {icon:"Timer",text:"Intended for short-term use (2–3 weeks). Not effective beyond that window."},
+    {icon:"Timer",text:"Intended for short-term use (2-3 weeks). Not effective beyond that window."},
     {icon:"Pill",text:"Avoid antidepressants and St. John's Wort without medical advice — risk of serotonin syndrome."},
   ]},
   pregabalin:{color:"var(--blue)",colorBg:"rgba(0,122,255,0.09)",label:"Pregabalin",points:[
@@ -138,7 +139,6 @@ const DRUG_TIPS={
 };
 function getDrugTips(name){if(!name)return null;const lower=name.toLowerCase();for(const[k,v]of Object.entries(DRUG_TIPS)){if(lower.includes(k)){if(v.ref)return DRUG_TIPS[v.ref];return v;}}return null;}
 
-// Shapes
 const ShapeCapsule=({size=20,color="currentColor"})=>(<svg width={size} height={size} viewBox="0 0 32 32" fill="none"><rect x="4" y="10" width="24" height="12" rx="6" fill={color} opacity="0.15"/><rect x="4" y="10" width="24" height="12" rx="6" stroke={color} strokeWidth="2"/><line x1="16" y1="10" x2="16" y2="22" stroke={color} strokeWidth="1.5"/></svg>);
 const ShapeCaplet=({size=20,color="currentColor"})=>(<svg width={size} height={size} viewBox="0 0 32 32" fill="none"><ellipse cx="16" cy="16" rx="11" ry="6" fill={color} opacity="0.15"/><ellipse cx="16" cy="16" rx="11" ry="6" stroke={color} strokeWidth="2"/></svg>);
 const ShapeRound=({size=20,color="currentColor"})=>(<svg width={size} height={size} viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="10" fill={color} opacity="0.15"/><circle cx="16" cy="16" r="10" stroke={color} strokeWidth="2"/></svg>);
@@ -150,13 +150,11 @@ const ShapeDiamond=({size=20,color="currentColor"})=>(<svg width={size} height={
 const SHAPES=[{value:"capsule",label:"Capsule",Icon:ShapeCapsule},{value:"caplet",label:"Caplet",Icon:ShapeCaplet},{value:"round",label:"Round",Icon:ShapeRound},{value:"round_scored",label:"Mini rond",Icon:ShapeRoundScored},{value:"oval",label:"Oval",Icon:ShapeOval},{value:"oblong",label:"Oblong",Icon:ShapeOblong},{value:"pentagon",label:"Pentagon",Icon:ShapePentagon},{value:"diamond",label:"Diamond",Icon:ShapeDiamond}];
 function ShapeIcon({shape,size=18,color="currentColor"}){const aliases={"oblong_scored":"oblong","round_scored":"round_scored"};const resolved=aliases[shape]||shape;const s=SHAPES.find(x=>x.value===resolved);if(!s)return <ShapeCapsule size={size} color={color}/>;return <s.Icon size={size} color={color}/>;}
 
-// Icons
-const IconSun=()=><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.2" fill="currentColor"/>{[0,45,90,135,180,225,270,315].map((r,i)=><line key={i} x1="12" y1="2.8" x2="12" y2="5.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" transform={`rotate(${r} 12 12)`}/>)}</svg>;
+const IconSun=()=><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.2" fill="currentColor"/>{[0,45,90,135,180,225,270,315].map((r,i)=><line key={i} x1="12" y1="2.8" x2="12" y2="5.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" transform={"rotate("+r+" 12 12)"}/>)}</svg>;
 const IconMoon=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z" fill="currentColor"/></svg>;
 const IconCheck=()=><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 const IconPlus=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>;
 const IconTrash=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><polyline points="3 6 5 6 21 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M9 6V4h6v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>;
-const IconPencil=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 const IconBack=()=><svg width="10" height="18" viewBox="0 0 10 18" fill="none"><polyline points="9 1 1 9 9 17" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 const IconFork=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M8 3v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="9" x2="12" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>;
 const IconChevron=()=><svg width="7" height="13" viewBox="0 0 7 13" fill="none"><polyline points="1 1 6 6.5 1 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
@@ -185,12 +183,11 @@ function TipIcon({name,size=16,color="currentColor"}){
 function GroupCard({label,children,action}){return(<div style={{marginBottom:32}}>{label&&(<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 4px",marginBottom:7}}><span style={{fontSize:13,fontWeight:600,color:"var(--t2)",textTransform:"uppercase",letterSpacing:"0.04em"}}>{label}</span>{action}</div>)}<div style={{background:"var(--card)",borderRadius:16,overflow:"hidden",boxShadow:"var(--shadow-sm)"}}>{children}</div></div>);}
 function GroupRow({first,children,onClick,style={}}){return(<div className={onClick?"row-press":""} onClick={onClick} style={{position:"relative",background:"var(--card)",cursor:onClick?"pointer":"default",...style}}>{!first&&<div style={{position:"absolute",top:0,left:16,right:0,height:"0.5px",background:"var(--sep)"}}/>}{children}</div>);}
 
-// ── BottomSheet with swipe-to-dismiss ─────────────────────────────
 function BottomSheet({onClose,children}){
   const sheetRef=useRef(null);
   const dragY=useRef(0),startY=useRef(0),isDragging=useRef(false);
   function onTouchStart(e){const el=sheetRef.current;if(!el||el.scrollTop>0)return;startY.current=e.touches[0].clientY;dragY.current=0;isDragging.current=true;}
-  function onTouchMove(e){if(!isDragging.current)return;const el=sheetRef.current;if(!el||el.scrollTop>0){isDragging.current=false;return;}const dy=e.touches[0].clientY-startY.current;if(dy<0){isDragging.current=false;return;}dragY.current=dy;el.style.transform=`translateY(${dy}px)`;el.style.transition="none";}
+  function onTouchMove(e){if(!isDragging.current)return;const el=sheetRef.current;if(!el||el.scrollTop>0){isDragging.current=false;return;}const dy=e.touches[0].clientY-startY.current;if(dy<0){isDragging.current=false;return;}dragY.current=dy;el.style.transform="translateY("+dy+"px)";el.style.transition="none";}
   function onTouchEnd(){if(!isDragging.current)return;isDragging.current=false;const el=sheetRef.current;if(!el)return;if(dragY.current>80){el.style.transition="transform 0.28s cubic-bezier(0.32,0.72,0,1)";el.style.transform="translateY(100%)";setTimeout(onClose,280);}else{el.style.transition="transform 0.22s cubic-bezier(0.22,1,0.36,1)";el.style.transform="translateY(0)";}}
   return ReactDOM.createPortal(<>
     <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:1100,background:"rgba(0,0,0,0.4)",backdropFilter:"blur(2px)",WebkitBackdropFilter:"blur(2px)"}}/>
@@ -205,7 +202,6 @@ function BottomSheet({onClose,children}){
   </>,document.body);
 }
 
-// ── PillForm ──────────────────────────────────────────────────────
 function PillForm({initial,accent,onSave,onCancel,submitLabel="Add",defaultSession="morning",noAutoFocus=false}){
   const [name,setName]=useState(initial?.name||"");
   const [shape,setShape]=useState(initial?.shape||"capsule");
@@ -214,13 +210,13 @@ function PillForm({initial,accent,onSave,onCancel,submitLabel="Add",defaultSessi
   const [startDate,setStartDate]=useState(initial?.startDate||todayStr());
   const [asNeeded,setAsNeeded]=useState(initial?.asNeeded!=null?initial.asNeeded:initial?.id?false:false);
   const [maxDailyDose,setMaxDailyDose]=useState(initial?.maxDailyDose||3);
+  const [minIntervalHours,setMinIntervalHours]=useState(initial?.minIntervalHours||4);
   const [schedules,setSchedules]=useState(()=>{
     if(initial?.schedules)return initial.schedules;
     const sess=initial?.sessions||(initial?.session&&initial.session!=="as_needed"?[initial.session]:[defaultSession||"morning"]);
     const timings=initial?.timings||(initial?.timing?[initial.timing]:[]);
     return sess.map((s,i)=>({session:s,timing:timings[i]||""}));
   });
-  // Dosage
   function parseDose(d){const m=(d||"").match(/^(\d+(?:\.\d+)?)\s*(.*)$/);if(m)return{amt:Number(m[1])||10,unit:m[2].trim()||"mg",qty:1};return{amt:10,unit:"mg",qty:1};}
   const parsed=parseDose(initial?.dose);
   const [dosageAmt,setDosageAmt]=useState(initial?.dosageAmt||parsed.amt);
@@ -229,26 +225,20 @@ function PillForm({initial,accent,onSave,onCancel,submitLabel="Add",defaultSessi
   const [suggestions,setSuggestions]=useState([]);
   const [showSuggestions,setShowSuggestions]=useState(false);
   const searchTimer=useRef(null);
-
   function handleNameChange(val){setName(val);setShowSuggestions(true);clearTimeout(searchTimer.current);if(val.length<2){setSuggestions([]);return;}searchTimer.current=setTimeout(async()=>{const res=await searchDrugs(val);setSuggestions(res);},300);}
   function pickSuggestion(s){setName(s.name);setSuggestions([]);setShowSuggestions(false);}
   function handleSave(){
     if(!name.trim())return;
-    const dose=`${quantity} × ${dosageAmt}${dosageUnit}`;
+    const dose=quantity+" x "+dosageAmt+dosageUnit;
     const sessions=asNeeded?["as_needed"]:schedules.map(s=>s.session);
-    onSave({name:name.trim(),dose,dosageAmt,dosageUnit,quantity,shape,schedules:asNeeded?[]:schedules,sessions,startDate,durationDays:ongoing?null:Number(durationDays),asNeeded,maxDailyDose:asNeeded?Number(maxDailyDose):null});
+    onSave({name:name.trim(),dose,dosageAmt,dosageUnit,quantity,shape,schedules:asNeeded?[]:schedules,sessions,startDate,durationDays:ongoing?null:Number(durationDays),asNeeded,maxDailyDose:asNeeded?Number(maxDailyDose):null,minIntervalHours:asNeeded?Number(minIntervalHours):null});
   }
-
-  const stepperBtn=(onClick,label)=>(
-    <button onClick={onClick} style={{width:28,height:28,borderRadius:8,background:"var(--acc-soft)",border:"none",color:"var(--acc)",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>{label}</button>
-  );
-
+  const stepBtn=(onClick,label)=>(<button onClick={onClick} style={{width:28,height:28,borderRadius:8,background:"var(--acc-soft)",border:"none",color:"var(--acc)",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>{label}</button>);
   return(
     <div style={{padding:"16px 16px 8px",background:"var(--card2)"}}>
       <div style={{position:"relative",marginBottom:16}}>
         <input autoFocus={!noAutoFocus} placeholder="Medicine name" value={name}
-          onChange={e=>handleNameChange(e.target.value)}
-          onKeyDown={e=>e.key==="Enter"&&handleSave()}
+          onChange={e=>handleNameChange(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleSave()}
           onFocus={()=>suggestions.length>0&&setShowSuggestions(true)}
           style={{width:"100%",padding:"11px 14px",borderRadius:12,border:"none",background:"var(--card)",color:"var(--t1)",fontSize:16,display:"block",boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}/>
         {showSuggestions&&suggestions.length>0&&(
@@ -262,34 +252,27 @@ function PillForm({initial,accent,onSave,onCancel,submitLabel="Add",defaultSessi
           </div>
         )}
       </div>
-
-      {/* Dosage + Quantity */}
       <div style={{marginBottom:16}}>
         <div style={{display:"flex",marginBottom:6}}>
           <div style={{fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",letterSpacing:"0.06em"}}>Dosage</div>
           <div style={{fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",letterSpacing:"0.06em",marginLeft:"auto"}}>Quantity</div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8,background:"var(--card)",borderRadius:12,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"10px 12px"}}>
-          {stepperBtn(()=>setDosageAmt(a=>Math.max(5,a-5)),"−")}
-          <input type="number" value={dosageAmt} onChange={e=>setDosageAmt(Math.max(1,Number(e.target.value)||1))}
-            style={{width:44,border:"none",background:"transparent",color:"var(--t1)",fontSize:15,fontWeight:600,textAlign:"center",WebkitAppearance:"none",MozAppearance:"textfield"}}/>
-          {stepperBtn(()=>setDosageAmt(a=>a+5),"+")}
+          {stepBtn(()=>setDosageAmt(a=>Math.max(5,a-5)),"−")}
+          <input type="number" value={dosageAmt} onChange={e=>setDosageAmt(Math.max(1,Number(e.target.value)||1))} style={{width:44,border:"none",background:"transparent",color:"var(--t1)",fontSize:15,fontWeight:600,textAlign:"center",WebkitAppearance:"none",MozAppearance:"textfield"}}/>
+          {stepBtn(()=>setDosageAmt(a=>a+5),"+")}
           <div style={{position:"relative",flexShrink:0}}>
-            <select value={dosageUnit} onChange={e=>setDosageUnit(e.target.value)}
-              style={{height:28,borderRadius:8,border:"none",background:"var(--card)",color:"var(--t1)",fontSize:13,fontWeight:600,paddingLeft:8,paddingRight:24,WebkitAppearance:"none",appearance:"none",cursor:"pointer"}}>
+            <select value={dosageUnit} onChange={e=>setDosageUnit(e.target.value)} style={{height:28,borderRadius:8,border:"none",background:"var(--card)",color:"var(--t1)",fontSize:13,fontWeight:600,paddingLeft:8,paddingRight:24,WebkitAppearance:"none",appearance:"none",cursor:"pointer"}}>
               {DOSE_UNITS.map(u=><option key={u} value={u}>{u}</option>)}
             </select>
             <svg style={{position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}} width="10" height="10" viewBox="0 0 24 24" fill="none"><polyline points="6 9 12 15 18 9" stroke="var(--t2)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </div>
           <div style={{width:"0.5px",background:"var(--sep)",alignSelf:"stretch",margin:"0 2px",flexShrink:0}}/>
-          {stepperBtn(()=>setQuantity(q=>Math.max(0.5,q-1)),"−")}
-          <input type="number" value={quantity} onChange={e=>setQuantity(Math.max(0.5,Number(e.target.value)||1))}
-            style={{width:30,border:"none",background:"transparent",color:"var(--t1)",fontSize:15,fontWeight:600,textAlign:"center",WebkitAppearance:"none",MozAppearance:"textfield"}}/>
-          {stepperBtn(()=>setQuantity(q=>q+1),"+")}
+          {stepBtn(()=>setQuantity(q=>Math.max(0.5,q-1)),"−")}
+          <input type="number" value={quantity} onChange={e=>setQuantity(Math.max(0.5,Number(e.target.value)||1))} style={{width:30,border:"none",background:"transparent",color:"var(--t1)",fontSize:15,fontWeight:600,textAlign:"center",WebkitAppearance:"none",MozAppearance:"textfield"}}/>
+          {stepBtn(()=>setQuantity(q=>q+1),"+")}
         </div>
       </div>
-
-      {/* Shape */}
       <div style={{marginBottom:16}}>
         <div style={{fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8}}>Shape</div>
         <div style={{display:"flex",gap:8,overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none",msOverflowStyle:"none",marginLeft:-16,marginRight:-16,paddingLeft:16,paddingRight:16,paddingBottom:2}}>
@@ -301,8 +284,6 @@ function PillForm({initial,accent,onSave,onCancel,submitLabel="Add",defaultSessi
           );})}
         </div>
       </div>
-
-      {/* Schedule (as needed toggle) */}
       <div style={{marginBottom:16}}>
         <div style={{fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8}}>Schedule</div>
         <div style={{background:"var(--card)",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
@@ -312,8 +293,8 @@ function PillForm({initial,accent,onSave,onCancel,submitLabel="Add",defaultSessi
               <div style={{position:"absolute",top:3,left:asNeeded?"23px":"3px",width:22,height:22,borderRadius:11,background:"#fff",boxShadow:"0 1px 3px rgba(0,0,0,0.25)",transition:"left 0.2s"}}/>
             </button>
           </div>
-          {asNeeded&&(
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 16px"}}>
+          {asNeeded&&(<>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 16px",borderTop:"0.5px solid var(--sep)"}}>
               <span style={{fontSize:15,color:"var(--t1)"}}>Max per day</span>
               <div style={{display:"flex",alignItems:"center",gap:14}}>
                 <button onClick={()=>setMaxDailyDose(Math.max(1,maxDailyDose-1))} style={{width:30,height:30,borderRadius:8,background:"var(--bg2)",border:"none",color:"var(--t1)",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>−</button>
@@ -321,24 +302,30 @@ function PillForm({initial,accent,onSave,onCancel,submitLabel="Add",defaultSessi
                 <button onClick={()=>setMaxDailyDose(maxDailyDose+1)} style={{width:30,height:30,borderRadius:8,background:"var(--bg2)",border:"none",color:"var(--t1)",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>+</button>
               </div>
             </div>
-          )}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 16px",borderTop:"0.5px solid var(--sep)"}}>
+              <span style={{fontSize:15,color:"var(--t1)"}}>Min. hrs between doses</span>
+              <div style={{display:"flex",alignItems:"center",gap:14}}>
+                <button onClick={()=>setMinIntervalHours(Math.max(1,minIntervalHours-1))} style={{width:30,height:30,borderRadius:8,background:"var(--bg2)",border:"none",color:"var(--t1)",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>−</button>
+                <span style={{fontSize:16,fontWeight:600,color:"var(--t1)",minWidth:36,textAlign:"center"}}>{minIntervalHours}h</span>
+                <button onClick={()=>setMinIntervalHours(minIntervalHours+1)} style={{width:30,height:30,borderRadius:8,background:"var(--bg2)",border:"none",color:"var(--t1)",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>+</button>
+              </div>
+            </div>
+          </>)}
         </div>
       </div>
-
-      {/* Schedules rows */}
       {!asNeeded&&(
         <div style={{marginBottom:16}}>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             {schedules.map((sched,i)=>(
               <div key={i} style={{display:"flex",alignItems:"center",gap:6}}>
                 <select value={sched.session} onChange={e=>setSchedules(prev=>prev.map((s,j)=>j===i?{...s,session:e.target.value}:s))}
-                  style={{flex:1,padding:"10px 10px",borderRadius:12,border:"none",background:"var(--card)",color:"var(--t1)",fontSize:14,fontWeight:500,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",WebkitAppearance:"none",appearance:"none",backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235c5c66' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 10px center",paddingRight:28}}>
+                  style={{flex:1,padding:"10px 10px",borderRadius:12,border:"none",background:"var(--card)",color:"var(--t1)",fontSize:14,fontWeight:500,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",WebkitAppearance:"none",appearance:"none",backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235c5c66' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E\")",backgroundRepeat:"no-repeat",backgroundPosition:"right 10px center",paddingRight:28}}>
                   <option value="morning">Morning</option>
                   <option value="lunch">Lunch</option>
                   <option value="evening">Evening</option>
                 </select>
                 <select value={sched.timing} onChange={e=>setSchedules(prev=>prev.map((s,j)=>j===i?{...s,timing:e.target.value}:s))}
-                  style={{flex:1,padding:"10px 10px",borderRadius:12,border:"none",background:"var(--card)",color:sched.timing?"var(--t1)":"var(--t3)",fontSize:14,fontWeight:500,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",WebkitAppearance:"none",appearance:"none",backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235c5c66' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 10px center",paddingRight:28}}>
+                  style={{flex:1,padding:"10px 10px",borderRadius:12,border:"none",background:"var(--card)",color:sched.timing?"var(--t1)":"var(--t3)",fontSize:14,fontWeight:500,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",WebkitAppearance:"none",appearance:"none",backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235c5c66' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E\")",backgroundRepeat:"no-repeat",backgroundPosition:"right 10px center",paddingRight:28}}>
                   <option value="">Any time</option>
                   {TIMING_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
@@ -349,16 +336,13 @@ function PillForm({initial,accent,onSave,onCancel,submitLabel="Add",defaultSessi
                 )}
               </div>
             ))}
-            <button onClick={()=>setSchedules(prev=>[...prev,{session:"morning",timing:""}])}
-              style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4,padding:"9px",borderRadius:12,background:"var(--acc-soft)",color:"var(--acc)",fontSize:13,fontWeight:600,border:"none",cursor:"pointer",width:"100%"}}>
+            <button onClick={()=>setSchedules(prev=>[...prev,{session:"morning",timing:""}])} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4,padding:"9px",borderRadius:12,background:"var(--acc-soft)",color:"var(--acc)",fontSize:13,fontWeight:600,border:"none",cursor:"pointer",width:"100%"}}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>
               Add schedule
             </button>
           </div>
         </div>
       )}
-
-      {/* Duration */}
       <div style={{marginBottom:20}}>
         <div style={{fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8}}>Duration</div>
         <div style={{background:"var(--card)",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
@@ -384,8 +368,7 @@ function PillForm({initial,accent,onSave,onCancel,submitLabel="Add",defaultSessi
           </>)}
         </div>
       </div>
-
-      <button onClick={handleSave} style={{width:"100%",padding:"14px",borderRadius:14,border:"none",background:accent,color:"#fff",fontSize:16,fontWeight:700,boxShadow:`0 2px 8px ${accent}55`,marginBottom:10,cursor:"pointer"}}>{submitLabel}</button>
+      <button onClick={handleSave} style={{width:"100%",padding:"14px",borderRadius:14,border:"none",background:accent,color:"#fff",fontSize:16,fontWeight:700,boxShadow:"0 2px 8px "+accent+"55",marginBottom:10,cursor:"pointer"}}>{submitLabel}</button>
       <button onClick={onCancel} style={{width:"100%",padding:"10px",border:"none",background:"transparent",color:"var(--t2)",fontSize:15,fontWeight:500,cursor:"pointer",marginBottom:4}}>Cancel</button>
     </div>
   );
@@ -395,7 +378,7 @@ function timingLabel(pill,session){
   const scheds=pill?.schedules;
   if(scheds&&scheds.length){
     if(session){const match=scheds.find(s=>s.session===session);if(!match)return null;return TIMING_OPTIONS.find(o=>o.value===match.timing)?.label||null;}
-    return scheds.map(s=>{const sess=s.session==="morning"?"Morning":s.session==="lunch"?"Lunch":"Evening";const tim=TIMING_OPTIONS.find(o=>o.value===s.timing)?.label;return tim?`${sess} · ${tim}`:sess;}).join(", ");
+    return scheds.map(s=>{const sess=s.session==="morning"?"Morning":s.session==="lunch"?"Lunch":"Evening";const tim=TIMING_OPTIONS.find(o=>o.value===s.timing)?.label;return tim?sess+" · "+tim:sess;}).join(", ");
   }
   const v=pill?.timing;return v?TIMING_OPTIONS.find(o=>o.value===v)?.label||null:null;
 }
@@ -431,6 +414,17 @@ function getPillsForSession(pillList,key){
     if(p.schedules&&p.schedules.length)return p.schedules.some(s=>s.session===key);
     return(p.sessions||[p.session]).includes(key);
   });
+}
+
+function asNeededStatus(timestamps,pill){
+  const count=timestamps.length;
+  const atMax=pill.maxDailyDose&&count>=pill.maxDailyDose;
+  if(!count)return{canTake:true,nextAllowedTs:null,count};
+  const lastTs=timestamps[count-1];
+  const intervalMs=(pill.minIntervalHours||0)*3600000;
+  const nextAllowedTs=intervalMs>0?lastTs+intervalMs:null;
+  const intervalOk=!nextAllowedTs||Date.now()>=nextAllowedTs;
+  return{canTake:!atMax&&intervalOk,nextAllowedTs,count};
 }
 
 const TABS=[{key:"today",label:"Today",Icon:IconTabToday},{key:"history",label:"History",Icon:IconTabHistory},{key:"settings",label:"Settings",Icon:IconTabSettings}];
@@ -479,7 +473,7 @@ function HistoryView({view,setView,selectedDay,setSelectedDay,history,pillList,a
                   :bySession[key].map((pill,i)=>{const t=dayLog?.[key]?.[pill.id]??false;return(
                     <GroupRow key={pill.id} first={i===0} onClick={()=>toggleHistoryTaken(selectedDay,key,pill.id)}>
                       <div style={{display:"flex",alignItems:"center",gap:13,padding:"13px 16px"}}>
-                        <button onClick={e=>{e.stopPropagation();toggleHistoryTaken(selectedDay,key,pill.id);}} style={{width:28,height:28,borderRadius:"50%",flexShrink:0,border:`2px solid ${t?accent:"var(--sep)"}`,background:t?accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",transition:"border-color 0.15s,background 0.15s"}}>{t&&<IconCheck/>}</button>
+                        <button onClick={e=>{e.stopPropagation();toggleHistoryTaken(selectedDay,key,pill.id);}} style={{width:28,height:28,borderRadius:"50%",flexShrink:0,border:"2px solid "+(t?accent:"var(--sep)"),background:t?accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",transition:"border-color 0.15s,background 0.15s"}}>{t&&<IconCheck/>}</button>
                         <div style={{flex:1,minWidth:0}}>
                           <div style={{fontSize:16,fontWeight:500,color:"var(--t1)",opacity:t?0.4:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{pill.name}</div>
                           <div style={{fontSize:13,color:"var(--t2)",marginTop:1}}>{pill.dose}</div>
@@ -490,7 +484,11 @@ function HistoryView({view,setView,selectedDay,setSelectedDay,history,pillList,a
                   );})}
               </GroupCard>
             ))}
-            {asNeededPillsForDay.length>0&&(<GroupCard label="As needed">{asNeededPillsForDay.map((pill,i)=>{const entries=asNeededLog[pill.id]||[];return(<GroupRow key={pill.id} first={i===0}><div style={{display:"flex",alignItems:"center",gap:13,padding:"13px 16px"}}><div style={{width:28,height:28,borderRadius:"50%",flexShrink:0,background:"var(--acc-soft)",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--acc)",fontSize:13,fontWeight:700}}>{entries.length}×</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:16,fontWeight:500,color:"var(--t1)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{pill.name}</div><div style={{fontSize:13,color:"var(--t2)",marginTop:1}}>{entries.map(e=>e.time).join(", ")}</div></div></div></GroupRow>);})}</GroupCard>)}
+            {asNeededPillsForDay.length>0&&(<GroupCard label="As needed">{asNeededPillsForDay.map((pill,i)=>{
+              const entries=asNeededLog[pill.id]||[];
+              const times=entries.map(e=>typeof e==="number"?fmtTime(e):(e?.time||"")).filter(Boolean);
+              return(<GroupRow key={pill.id} first={i===0}><div style={{display:"flex",alignItems:"center",gap:13,padding:"13px 16px"}}><div style={{width:28,height:28,borderRadius:"50%",flexShrink:0,background:"var(--acc-soft)",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--acc)",fontSize:13,fontWeight:700}}>{entries.length}x</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:16,fontWeight:500,color:"var(--t1)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{pill.name}</div><div style={{fontSize:13,color:"var(--t2)",marginTop:1}}>{times.join(", ")}</div></div></div></GroupRow>);
+            })}</GroupCard>)}
           </>);
         })():(
           <GroupCard label="Log">
@@ -503,7 +501,7 @@ function HistoryView({view,setView,selectedDay,setSelectedDay,history,pillList,a
                   const histEntry=history.find(h=>h.date===date);
                   const archEntries=archiveByDate[date]||[];
                   const elements=[];
-                  archEntries.forEach(ev=>{const isFirst=rowIndex===0;rowIndex++;elements.push(<GroupRow key={`arch-${ev.pill.id}`} first={isFirst}><div style={{display:"flex",alignItems:"center",gap:10,padding:"11px 16px"}}><span style={{color:"var(--t3)",display:"flex",flexShrink:0}}><IconArchive/></span><span style={{fontSize:13,color:"var(--t3)",fontStyle:"italic"}}><span style={{fontStyle:"normal",fontWeight:500,color:"var(--t2)"}}>{ev.pill.name}</span>{" "}finished on {formatFull(ev.pill.endDate)}</span></div></GroupRow>);});
+                  archEntries.forEach(ev=>{const isFirst=rowIndex===0;rowIndex++;elements.push(<GroupRow key={"arch-"+ev.pill.id} first={isFirst}><div style={{display:"flex",alignItems:"center",gap:10,padding:"11px 16px"}}><span style={{color:"var(--t3)",display:"flex",flexShrink:0}}><IconArchive/></span><span style={{fontSize:13,color:"var(--t3)",fontStyle:"italic"}}><span style={{fontStyle:"normal",fontWeight:500,color:"var(--t2)"}}>{ev.pill.name}</span>{" "}finished on {formatFull(ev.pill.endDate)}</span></div></GroupRow>);});
                   if(histEntry){
                     const{pct,taken:tk,total:tt}=dayScore(histEntry.log,pillList,archived,date);
                     const isToday=date===todayStr(),col=pct===100?"var(--green)":pct>=50?"var(--acc)":"var(--red)",C=2*Math.PI*13;
@@ -575,7 +573,7 @@ function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchi
           <div style={{background:"var(--card)",borderRadius:16,overflow:"hidden",boxShadow:"var(--shadow-sm)"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>App</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Pill Reminder</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v67</span></div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v51</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Storage</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Local · IndexedDB</span></div>
           </div>
@@ -591,6 +589,7 @@ function App(){
   const [pillList,setPillList]=useState(null);
   const [archived,setArchived]=useState({morning:[],lunch:[],evening:[]});
   const [todayLog,setTodayLog]=useState(null);
+  const [asNeededTs,setAsNeededTs]=useState({});
   const [history,setHistory]=useState([]);
   const [flash,setFlash]=useState(null);
   const [loading,setLoading]=useState(true);
@@ -600,8 +599,10 @@ function App(){
   const [detailSheet,setDetailSheet]=useState(null);
   const [addSheet,setAddSheet]=useState(null);
   const [profile,setProfile]=useState({name:"",age:"",weight:"",height:""});
+  const [now,setNow]=useState(Date.now());
   const fileInputRef=useRef(null);
 
+  useEffect(()=>{const t=setInterval(()=>setNow(Date.now()),30000);return()=>clearInterval(t);},[]);
   useEffect(()=>{const h=e=>{e.preventDefault();setInstallPrompt(e);};window.addEventListener("beforeinstallprompt",h);window.addEventListener("appinstalled",()=>{setInstalled(true);setInstallPrompt(null);});return()=>window.removeEventListener("beforeinstallprompt",h);},[]);
 
   useEffect(()=>{(async()=>{
@@ -611,7 +612,6 @@ function App(){
     if(!list.lunch)list={...list,lunch:[]};
     if(!list.as_needed)list={...list,as_needed:[]};
     list=await archiveExpired(list);
-    // Normalize to schedules
     for(const sess of["morning","lunch","evening"]){list[sess]=(list[sess]||[]).map(p=>{if(p.schedules)return p;const sessions=p.sessions||(p.session&&p.session!=="as_needed"?[p.session]:[sess]);const timings=p.timings||(p.timing?[p.timing]:[]);return{...p,schedules:sessions.map((s,i)=>({session:s,timing:timings[i]||""})),sessions};});}
     setPillList(list);
     const arch=await dbGet(ARCHIVED_KEY)||{morning:[],lunch:[],evening:[]};
@@ -620,7 +620,10 @@ function App(){
     const prof=await dbGet(PROFILE_KEY)||{name:"",age:"",weight:"",height:""};setProfile(prof);
     const today=todayStr();let log=await dbGet(dayKey(today));
     if(!log){log=buildEmptyLog(list);await dbSet(dayKey(today),log);}
-    setTodayLog(log);setLoading(false);
+    setTodayLog(log);
+    const ts=await dbGet(asNeededDayKey(today))||{};
+    setAsNeededTs(ts);
+    setLoading(false);
   })();},[]);
 
   function buildEmptyLog(list){
@@ -643,7 +646,7 @@ function App(){
     const{sessions:pillSessions=null,schedules:pillSchedules=null,session:legacySess,...rest}=pillData;
     const sessList=pillSessions||(legacySess&&legacySess!=="as_needed"?[legacySess]:[defaultSession]);
     const primarySess=sessList[0]||defaultSession;
-    const id=`${primarySess[0]}${Date.now()}`;
+    const id=primarySess[0]+Date.now();
     const pill={id,...rest,schedules:pillSchedules||sessList.map(s=>({session:s,timing:""})),sessions:sessList};
     const newList={...pillList,[primarySess]:[...(pillList[primarySess]||[]),pill]};
     let newLog={...todayLog};
@@ -653,9 +656,25 @@ function App(){
     setAddSheet(null);
   }
 
-  async function takeAsNeeded(id){const now=new Date();const timeStr=`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;const existing=todayLog.as_needed?.[id]||[];const newLog={...todayLog,as_needed:{...todayLog.as_needed,[id]:[...existing,{time:timeStr}]}};setTodayLog(newLog);await dbSet(dayKey(todayStr()),newLog);setFlash(id);setTimeout(()=>setFlash(null),400);}
+  async function takeAsNeeded(id){
+    const ts=Date.now();const today=todayStr();
+    const existing=asNeededTs[id]||[];
+    const newTs={...asNeededTs,[id]:[...existing,ts]};
+    setAsNeededTs(newTs);
+    await dbSet(asNeededDayKey(today),newTs);
+    const logExisting=todayLog.as_needed?.[id]||[];
+    const newLog={...todayLog,as_needed:{...todayLog.as_needed,[id]:[...logExisting,ts]}};
+    setTodayLog(newLog);await dbSet(dayKey(today),newLog);
+    setFlash(id);setTimeout(()=>setFlash(null),400);
+  }
 
-  async function deleteAsNeededPill(id){const newList={...pillList,as_needed:(pillList.as_needed||[]).filter(p=>p.id!==id)};const newLog={...todayLog,as_needed:{...todayLog.as_needed}};delete newLog.as_needed[id];setPillList(newList);setTodayLog(newLog);await dbSet(PILL_LIST_KEY,newList);await dbSet(dayKey(todayStr()),newLog);}
+  async function deleteAsNeededPill(id){
+    const newList={...pillList,as_needed:(pillList.as_needed||[]).filter(p=>p.id!==id)};
+    const newLog={...todayLog,as_needed:{...todayLog.as_needed}};delete newLog.as_needed[id];
+    const newTs={...asNeededTs};delete newTs[id];
+    setPillList(newList);setTodayLog(newLog);setAsNeededTs(newTs);
+    await dbSet(PILL_LIST_KEY,newList);await dbSet(dayKey(todayStr()),newLog);await dbSet(asNeededDayKey(todayStr()),newTs);
+  }
 
   async function deletePill(session,id){
     if(session==="as_needed")return deleteAsNeededPill(id);
@@ -669,9 +688,7 @@ function App(){
   }
 
   const sessions=pillList?[{key:"morning",label:"Morning",Icon:IconSun,accent:"var(--acc)"},{key:"lunch",label:"Lunch",Icon:IconFork,accent:"var(--acc)"},{key:"evening",label:"Evening",Icon:IconMoon,accent:"var(--acc)"}]:[];
-
   if(loading)return(<div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:"var(--t2)",fontSize:14}}>Loading…</div></div>);
-
   if(view==="history")return(<><HistoryView view={view} setView={setView} selectedDay={selectedDay} setSelectedDay={setSelectedDay} history={history} pillList={pillList} archived={archived} sessions={sessions} toggleHistoryTaken={toggleHistoryTaken}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay}/></>);
   if(view==="settings")return(<><SettingsView view={view} setView={setView} setSelectedDay={setSelectedDay} profile={profile} setProfile={setProfile} pillList={pillList} archived={archived} setPillList={setPillList} setArchived={setArchived} fileInputRef={fileInputRef}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay}/></>);
 
@@ -700,7 +717,6 @@ function App(){
             {installPrompt&&!installed&&(<button onClick={()=>{installPrompt.prompt();installPrompt.userChoice.then(()=>setInstallPrompt(null));}} style={{background:"var(--acc-soft)",color:"var(--acc)",fontSize:12,fontWeight:600,padding:"5px 12px",borderRadius:20,letterSpacing:"0.02em"}}>⬇︎ Add to Home Screen</button>)}
           </div>
         </div>
-
         <div style={{padding:"18px 20px 0"}}>
           <div style={{marginBottom:20,marginTop:8,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <div className="serif" style={{fontSize:26,fontWeight:400,color:"var(--t1)",letterSpacing:"-0.01em",lineHeight:1.1}}>Today's Medications</div>
@@ -715,15 +731,15 @@ function App(){
             return(<div key={key} style={{marginBottom:28}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
                 <span style={{display:"flex",alignItems:"center",gap:6,fontSize:12,fontWeight:600,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.07em"}}><Icon/>{label}</span>
-                <span style={{fontSize:13,fontWeight:500,color:allDone?"var(--green)":"var(--t3)"}}>{allDone?"✓ Done":`${prog} / ${pills.length}`}</span>
+                <span style={{fontSize:13,fontWeight:500,color:allDone?"var(--green)":"var(--t3)"}}>{allDone?"✓ Done":prog+" / "+pills.length}</span>
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:10}}>
                 {pills.map(pill=>{
                   const t=!!log[pill.id],tl=timingLabel(pill,key);
                   let durationInfo=null;
-                  if(pill.durationDays!=null&&pill.startDate){const endDate=addDays(pill.startDate,pill.durationDays);const today=todayStr();const[ey,em,ed]=endDate.split("-").map(Number);const[ty,tm,td]=today.split("-").map(Number);const daysLeft=Math.round((new Date(ey,em-1,ed)-new Date(ty,tm-1,td))/(1000*60*60*24));durationInfo=daysLeft<=3?`${daysLeft} day${daysLeft!==1?"s":""} left`:`Until ${formatShort(endDate)}`;}
+                  if(pill.durationDays!=null&&pill.startDate){const endDate=addDays(pill.startDate,pill.durationDays);const today=todayStr();const[ey,em,ed]=endDate.split("-").map(Number);const[ty,tm,td]=today.split("-").map(Number);const daysLeft=Math.round((new Date(ey,em-1,ed)-new Date(ty,tm-1,td))/(1000*60*60*24));durationInfo=daysLeft<=3?daysLeft+" day"+(daysLeft!==1?"s":"")+" left":"Until "+formatShort(endDate);}
                   return(<div key={pill.id} className="pill-card pill-press" onClick={()=>setDetailSheet({pill,session:key,accent})}
-                    style={{display:"flex",alignItems:"center",background:"var(--card)",borderRadius:18,overflow:"hidden",boxShadow:"var(--shadow-md)",cursor:"pointer",opacity:t?0.55:1,animationDelay:`${pills.indexOf(pill)*60}ms`}}>
+                    style={{display:"flex",alignItems:"center",background:"var(--card)",borderRadius:18,overflow:"hidden",boxShadow:"var(--shadow-md)",cursor:"pointer",opacity:t?0.55:1,animationDelay:pills.indexOf(pill)*60+"ms"}}>
                     <div style={{width:68,height:80,flexShrink:0,background:"rgba(212,85,0,0.07)",display:"flex",alignItems:"center",justifyContent:"center"}}><ShapeIcon shape={pill.shape} size={28} color="var(--acc)"/></div>
                     <div style={{flex:1,minWidth:0,padding:"4px 14px"}}>
                       <div style={{fontSize:16,fontWeight:600,color:"var(--t1)",letterSpacing:"-0.01em",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{pill.name}</div>
@@ -731,7 +747,7 @@ function App(){
                       {(tl||durationInfo)&&(<div style={{fontSize:12,color:"var(--t3)",marginTop:3,display:"flex",gap:5}}>{tl&&<span>{tl}</span>}{tl&&durationInfo&&<span>·</span>}{durationInfo&&<span style={{color:durationInfo.includes("left")?"var(--acc)":"var(--t3)"}}>{durationInfo}</span>}</div>)}
                     </div>
                     <div style={{paddingRight:16,flexShrink:0}}>
-                      <button onClick={e=>{e.stopPropagation();toggleTaken(key,pill.id);}} className={flash===pill.id?"pop":""} style={{width:28,height:28,borderRadius:"50%",border:`2px solid ${t?accent:"var(--sep)"}`,background:t?accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",transition:"border-color 0.15s,background 0.15s"}}>{t&&<IconCheck/>}</button>
+                      <button onClick={e=>{e.stopPropagation();toggleTaken(key,pill.id);}} className={flash===pill.id?"pop":""} style={{width:28,height:28,borderRadius:"50%",border:"2px solid "+(t?accent:"var(--sep)"),background:t?accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",transition:"border-color 0.15s,background 0.15s"}}>{t&&<IconCheck/>}</button>
                     </div>
                   </div>);
                 })}
@@ -747,21 +763,32 @@ function App(){
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {(pillList.as_needed||[]).map(pill=>{
-                const entries=todayLog.as_needed?.[pill.id]||[],count=entries.length,atMax=pill.maxDailyDose&&count>=pill.maxDailyDose;
+                const timestamps=asNeededTs[pill.id]||[];
+                const{canTake,nextAllowedTs,count}=asNeededStatus(timestamps,pill);
+                const atMax=pill.maxDailyDose&&count>=pill.maxDailyDose;
+                const intervalBlocked=!atMax&&!canTake;
+                const nextLabel=(nextAllowedTs&&now<nextAllowedTs)?"Next at "+fmtTime(nextAllowedTs):null;
                 return(<div key={pill.id} className="pill-card pill-press" onClick={()=>setDetailSheet({pill,session:"as_needed",accent:"var(--acc)"})}
-                  style={{display:"flex",alignItems:"center",background:"var(--card)",borderRadius:18,overflow:"hidden",boxShadow:"var(--shadow-md)",cursor:"pointer",animationDelay:`${(pillList.as_needed||[]).indexOf(pill)*60}ms`}}>
+                  style={{display:"flex",alignItems:"center",background:"var(--card)",borderRadius:18,overflow:"hidden",boxShadow:"var(--shadow-md)",cursor:"pointer",animationDelay:(pillList.as_needed||[]).indexOf(pill)*60+"ms"}}>
                   <div style={{width:68,height:80,flexShrink:0,background:"rgba(212,85,0,0.07)",display:"flex",alignItems:"center",justifyContent:"center"}}><ShapeIcon shape={pill.shape} size={28} color="var(--acc)"/></div>
                   <div style={{flex:1,minWidth:0,padding:"4px 14px"}}>
                     <div style={{fontSize:16,fontWeight:600,color:"var(--t1)",letterSpacing:"-0.01em",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{pill.name}</div>
                     <div style={{fontSize:13,color:"var(--t2)",marginTop:2,fontWeight:400}}>{pill.dose}</div>
-                    {atMax&&<div style={{fontSize:12,color:"var(--red)",marginTop:3,fontWeight:600}}>Max atteint ({pill.maxDailyDose}×)</div>}
-                    {!atMax&&count>0&&<div style={{fontSize:12,color:"var(--t3)",marginTop:3}}>{count}× today · {entries[entries.length-1].time}</div>}
+                    {atMax&&<div style={{fontSize:12,color:"var(--red)",marginTop:3,fontWeight:600}}>Max atteint ({pill.maxDailyDose}x)</div>}
+                    {!atMax&&nextLabel&&<div style={{fontSize:12,color:"var(--blue)",marginTop:3,fontWeight:500}}>{nextLabel}</div>}
+                    {!atMax&&!nextLabel&&count>0&&<div style={{fontSize:12,color:"var(--green)",marginTop:3,fontWeight:500}}>{count}x today · derniere {fmtTime(timestamps[count-1])}</div>}
+                    {!atMax&&count===0&&pill.minIntervalHours&&<div style={{fontSize:12,color:"var(--t3)",marginTop:3}}>Toutes les {pill.minIntervalHours}h · max {pill.maxDailyDose}x/jour</div>}
                   </div>
                   <div style={{paddingRight:16,flexShrink:0}}>
-                    <button onClick={e=>{e.stopPropagation();if(!atMax)takeAsNeeded(pill.id);}} className={flash===pill.id?"pop":""}
-                      style={{position:"relative",width:34,height:34,borderRadius:"50%",border:"none",background:"var(--acc-soft)",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--acc)",fontSize:22,fontWeight:300,opacity:atMax?0.7:1,transition:"background 0.15s"}}>
-                      {atMax?<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" strokeWidth="2"/><line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>:<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>}
-                      {count>0&&!atMax&&<span style={{position:"absolute",top:-4,right:-4,background:"var(--acc)",color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:10,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{count}</span>}
+                    <button onClick={e=>{e.stopPropagation();if(canTake)takeAsNeeded(pill.id);}} className={flash===pill.id?"pop":""}
+                      style={{position:"relative",width:34,height:34,borderRadius:"50%",border:"none",background:canTake?"var(--acc-soft)":"var(--bg2)",display:"flex",alignItems:"center",justifyContent:"center",color:canTake?"var(--acc)":"var(--t3)",opacity:canTake?1:0.5,transition:"background 0.15s"}}>
+                      {atMax
+                        ?<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" strokeWidth="2"/><line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                        :intervalBlocked
+                          ?<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/><polyline points="12 7 12 12 15 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          :<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>
+                      }
+                      {count>0&&canTake&&<span style={{position:"absolute",top:-4,right:-4,background:"var(--acc)",color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:10,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{count}</span>}
                     </button>
                   </div>
                 </div>);
@@ -796,7 +823,6 @@ function App(){
               ))}
             </div>);
           })()}
-
           <div style={{textAlign:"center",fontSize:12,color:"var(--t3)",paddingTop:16,paddingBottom:12,letterSpacing:"0.02em"}} className="safe-bottom">Saved locally · Resets at midnight</div>
         </div>
       </div>
@@ -804,7 +830,6 @@ function App(){
 
     <TabBar view={view} setView={setView} setSelectedDay={setSelectedDay}/>
 
-    {/* Add sheet */}
     {addSheet&&(<BottomSheet onClose={()=>setAddSheet(null)}>
       <div style={{padding:"4px 20px 12px"}}><div style={{fontSize:18,fontWeight:700,color:"var(--t1)"}}>Add medication</div></div>
       <div style={{borderTop:"0.5px solid var(--sep)"}}>
@@ -812,7 +837,6 @@ function App(){
       </div>
     </BottomSheet>)}
 
-    {/* Edit/detail sheet */}
     {detailSheet&&(<BottomSheet onClose={()=>setDetailSheet(null)}>
       <div style={{display:"flex",alignItems:"center",gap:14,padding:"4px 20px 16px"}}>
         <div style={{width:52,height:52,borderRadius:14,flexShrink:0,background:"var(--sep)",display:"flex",alignItems:"center",justifyContent:"center"}}><ShapeIcon shape={detailSheet.pill.shape} size={28} color="var(--t2)"/></div>
@@ -854,7 +878,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 <script>
 if("serviceWorker"in navigator){
-  const sw=`const C="pr-v67",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});`;
+  const sw='const C="pr-v51",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
