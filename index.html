@@ -583,7 +583,7 @@ function HistoryView({view,setView,selectedDay,setSelectedDay,history,setHistory
   </div>);
 }
 
-function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchived}){
+function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchived,fileInputRef}){
   return(<div style={{minHeight:"100vh",background:"var(--bg)",paddingBottom:"calc(90px + env(safe-area-inset-bottom,0px))"}} className="fade-up">
     <div style={{maxWidth:480,margin:"0 auto"}}>
       <div style={{background:"var(--card)",borderRadius:"0 0 24px 24px",boxShadow:"var(--shadow-md)",marginBottom:6,paddingTop:"calc(env(safe-area-inset-top,20px) + 20px)",paddingBottom:18,paddingLeft:20,paddingRight:20}}>
@@ -602,6 +602,23 @@ function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchi
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+        <div style={{marginBottom:28}}>
+          <div style={{fontSize:12,fontWeight:600,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:10}}>Data</div>
+          <div style={{background:"var(--card)",borderRadius:16,overflow:"hidden",boxShadow:"var(--shadow-sm)"}}>
+            <button onClick={()=>fileInputRef.current?.click()} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"15px 16px",background:"transparent",color:"var(--t1)",fontSize:15,fontWeight:500,textAlign:"left"}}>Import backup<span style={{fontSize:13,color:"var(--blue)"}}>Choose JSON</span></button>
+            <input ref={fileInputRef} type="file" accept=".json" style={{display:"none"}} onChange={async e=>{
+              const file=e.target.files?.[0];if(!file)return;
+              try{
+                const text=await file.text();const data=JSON.parse(text);
+                if(data.pillList){await sbSet(PILL_LIST_KEY,data.pillList);setPillList(data.pillList);}
+                if(data.archived){await sbSet(ARCHIVED_KEY,data.archived);setArchived(data.archived);}
+                if(data.logs){for(const[d,l]of Object.entries(data.logs))await sbSet(dayKey(d),l);}
+                if(data.profile){await sbSet(PROFILE_KEY,data.profile);setProfile(data.profile);}
+                alert("Import successful!");
+              }catch{alert("Import failed — invalid file.");}
+            }}/>
           </div>
         </div>
         <div style={{marginBottom:28}}>
@@ -658,6 +675,7 @@ function App(){
   const [addSheet,setAddSheet]=useState(null);
   const [profile,setProfile]=useState({name:"",age:"",weight:"",height:""});
   const [now,setNow]=useState(Date.now());
+  const fileInputRef=useRef(null);
 
   useEffect(()=>{const t=setInterval(()=>setNow(Date.now()),30000);return()=>clearInterval(t);},[]);
   useEffect(()=>{const h=e=>{e.preventDefault();setInstallPrompt(e);};window.addEventListener("beforeinstallprompt",h);window.addEventListener("appinstalled",()=>{setInstalled(true);setInstallPrompt(null);});return()=>window.removeEventListener("beforeinstallprompt",h);},[]);
@@ -755,7 +773,7 @@ function App(){
   if(loading)return(<div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:"var(--t2)",fontSize:14}}>Loading…</div></div>);
   if(!USER_TOKEN)return <NoTokenView/>;
   if(view==="history")return(<><HistoryView view={view} setView={setView} selectedDay={selectedDay} setSelectedDay={setSelectedDay} history={history} setHistory={setHistory} pillList={pillList} archived={archived} sessions={sessions} toggleHistoryTaken={toggleHistoryTaken}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay}/></>);
-  if(view==="settings")return(<><SettingsView view={view} setView={setView} setSelectedDay={setSelectedDay} profile={profile} setProfile={setProfile} pillList={pillList} archived={archived} setPillList={setPillList} setArchived={setArchived}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay}/></>);
+  if(view==="settings")return(<><SettingsView view={view} setView={setView} setSelectedDay={setSelectedDay} profile={profile} setProfile={setProfile} pillList={pillList} archived={archived} setPillList={setPillList} setArchived={setArchived} fileInputRef={fileInputRef}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay}/></>);
 
   const total=sessions.reduce((s,{key})=>s+getPillsForSession(pillList,key).length,0);
   const taken=sessions.reduce((s,{key})=>{const p=getPillsForSession(pillList,key),l=todayLog[key]||{};return s+p.filter(x=>l[x.id]).length;},0);
