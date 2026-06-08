@@ -60,7 +60,7 @@
     .fade-up{animation:fadeUp 0.3s cubic-bezier(0.22,1,0.36,1) both;}
     @keyframes pillIn{from{opacity:0;transform:translateY(8px) scale(0.98)}to{opacity:1;transform:translateY(0) scale(1)}}
     .pill-card{animation:pillIn 0.32s cubic-bezier(0.22,1,0.36,1) both;}
-    @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    @keyframes spin{to{transform:rotate(360deg)}} @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
     .ring-fill{transition:stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1);}
     .row-press:active{background:var(--bg2)!important;transition:none;}
     .pill-press:active{transform:scale(0.985);transition:transform 0.1s;}
@@ -640,7 +640,7 @@ function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchi
           <div style={{background:"var(--card)",borderRadius:16,overflow:"hidden",boxShadow:"var(--shadow-sm)"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>App</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Posology</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v66</span></div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v67</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Storage</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Supabase</span></div>
           </div>
@@ -672,6 +672,8 @@ function App(){
   const [asNeededTs,setAsNeededTs]=useState({});
   const [history,setHistory]=useState([]);
   const [flash,setFlash]=useState(null);
+  const [aiTips,setAiTips]=useState(null);
+  const [tipsLoading,setTipsLoading]=useState(false);
   const [loading,setLoading]=useState(true);
   const [selectedDay,setSelectedDay]=useState(null);
   const [installPrompt,setInstallPrompt]=useState(null);
@@ -695,6 +697,7 @@ function App(){
       list=await archiveExpired(list);
       for(const sess of["morning","lunch","evening"]){list[sess]=(list[sess]||[]).map(p=>{if(p.schedules)return p;const sessions=p.sessions||(p.session&&p.session!=="as_needed"?[p.session]:[sess]);const timings=p.timings||(p.timing?[p.timing]:[]);return{...p,schedules:sessions.map((s,i)=>({session:s,timing:timings[i]||""})),sessions};});}
       setPillList(list);
+      generateTips(list);
       const arch=await sbGet(ARCHIVED_KEY)||{morning:[],lunch:[],evening:[]};
       if(arch.night&&!arch.evening){arch.evening=arch.night;delete arch.night;}if(!arch.lunch)arch.lunch=[];
       setArchived(arch);
@@ -728,6 +731,37 @@ function App(){
   async function toggleTaken(session,id){const newLog={...todayLog,[session]:{...todayLog[session],[id]:!todayLog[session][id]}};setTodayLog(newLog);await sbSet(dayKey(todayStr()),newLog);if(newLog[session][id]){setFlash(id);setTimeout(()=>setFlash(null),400);}}
   async function toggleHistoryTaken(date,session,id){const existing=await sbGet(dayKey(date))||{morning:{},lunch:{},evening:{}};const newLog={...existing,[session]:{...existing[session],[id]:!existing[session]?.[id]}};await sbSet(dayKey(date),newLog);setHistory(prev=>prev.map(h=>h.date===date?{...h,log:newLog}:h));}
 
+
+  async function generateTips(list){
+    const allPills=[...(list.morning||[]),...(list.lunch||[]),...(list.evening||[]),...(list.as_needed||[])];
+    if(allPills.length===0){setAiTips([]);return;}
+    const pillsDesc=allPills.map(p=>{
+      const doseStr=p.dosageAmt&&p.dosageUnit?`${p.dosageAmt}${p.dosageUnit}`:p.dose||"";
+      return `- ${p.name}${doseStr?` (${doseStr})`:""}`+
+        (p.asNeeded?" [as needed]":"")+
+        (p.maxDailyDose?` max ${p.maxDailyDose}x/day`:"");
+    }).join("\n");
+    const hashKey="pr:tips:"+btoa(unescape(encodeURIComponent(pillsDesc))).slice(0,40);
+    try{
+      const cached=await sbGet(hashKey);
+      if(cached&&Array.isArray(cached)){setAiTips(cached);return;}
+    }catch{}
+    setTipsLoading(true);
+    try{
+      const res=await fetch(`${SUPA_URL}/functions/v1/get-tips`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer "+SUPA_KEY},
+        body:JSON.stringify({pillsDesc})
+      });
+      const tips=await res.json();
+      if(Array.isArray(tips)){
+        setAiTips(tips);
+        await sbSet(hashKey,tips);
+      }
+    }catch(e){console.error("Tips error",e);setAiTips([]);}
+    setTipsLoading(false);
+  }
+
   async function addPill(defaultSession,pillData){
     const{sessions:pillSessions=null,schedules:pillSchedules=null,session:legacySess,...rest}=pillData;
     const sessList=pillSessions||(legacySess&&legacySess!=="as_needed"?[legacySess]:[defaultSession]);
@@ -740,6 +774,7 @@ function App(){
     setPillList(newList);setTodayLog(newLog);
     await sbSet(PILL_LIST_KEY,newList);await sbSet(dayKey(todayStr()),newLog);
     setAddSheet(null);
+    generateTips(newList);
   }
 
   async function takeAsNeeded(id){
@@ -760,6 +795,7 @@ function App(){
     const newTs={...asNeededTs};delete newTs[id];
     setPillList(newList);setTodayLog(newLog);setAsNeededTs(newTs);
     await sbSet(PILL_LIST_KEY,newList);await sbSet(dayKey(todayStr()),newLog);await sbSet(asNeededDayKey(todayStr()),newTs);
+    generateTips(newList);
   }
 
   async function deletePill(session,id){
@@ -771,6 +807,7 @@ function App(){
     const sessionsToClean=pill?.schedules?pill.schedules.map(s=>s.session):pill?.sessions||[foundSess];
     for(const s of sessionsToClean){if(newLog[s]){newLog={...newLog,[s]:{...newLog[s]}};delete newLog[s][id];}}
     setPillList(newList);setTodayLog(newLog);await sbSet(PILL_LIST_KEY,newList);await sbSet(dayKey(todayStr()),newLog);
+    generateTips(newList);
   }
 
   const sessions=pillList?[{key:"morning",label:"Morning",Icon:IconSunrise,accent:"var(--acc)"},{key:"lunch",label:"Lunch",Icon:IconSun,accent:"var(--acc)"},{key:"evening",label:"Evening",Icon:IconMoon,accent:"var(--acc)"}]:[];
@@ -895,22 +932,29 @@ function App(){
           )}
 
           {(()=>{
-            const allPills=[...(pillList.morning||[]),...(pillList.lunch||[]),...(pillList.evening||[]),...(pillList.as_needed||[])];
-            const cards=allPills.map(p=>getDrugTips(p.name)).filter(Boolean).filter((t,i,arr)=>arr.findIndex(x=>x.label===t.label)===i);
+            const colorMap={orange:"var(--acc)",blue:"var(--blue)",green:"var(--green)",red:"var(--red)",purple:"var(--violet)"};
             return(<div style={{marginTop:28}}>
-              <div style={{marginBottom:14}}><div className="serif" style={{fontSize:26,fontWeight:400,color:"var(--t1)",letterSpacing:"-0.01em",lineHeight:1.1}}>Recommendations</div></div>
-              {cards.length===0?(
+              <div style={{marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div className="serif" style={{fontSize:26,fontWeight:400,color:"var(--t1)",letterSpacing:"-0.01em",lineHeight:1.1}}>Recommendations</div>
+                {tipsLoading&&<div style={{width:14,height:14,border:"2px solid var(--sep)",borderTopColor:"var(--acc)",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>}
+              </div>
+              {!tipsLoading&&(!aiTips||aiTips.length===0)?(
                 <div style={{background:"var(--card)",borderRadius:16,boxShadow:"0 1px 4px rgba(0,0,0,0.08)",padding:"32px 24px",display:"flex",flexDirection:"column",alignItems:"center",gap:16,textAlign:"center"}}>
                   <div style={{width:52,height:52,borderRadius:14,background:"var(--acc-soft)",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--acc)"}}><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></div>
-                  <div><div style={{fontSize:16,fontWeight:600,color:"var(--t1)",marginBottom:4}}>No alerts</div><div style={{fontSize:14,color:"var(--t2)"}}>Tips appear here for medications with known interactions or precautions.</div></div>
+                  <div><div style={{fontSize:16,fontWeight:600,color:"var(--t1)",marginBottom:4}}>No alerts</div><div style={{fontSize:14,color:"var(--t2)"}}>Add a medication to see personalized recommendations.</div></div>
                 </div>
-              ):cards.map(tip=>(
-                <div key={tip.label} style={{background:"var(--card)",borderRadius:14,overflow:"hidden",marginBottom:12,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:10,padding:"13px 16px",borderBottom:"0.5px solid var(--sep-strong)"}}><span style={{fontSize:15,fontWeight:600,color:"var(--t1)"}}>{tip.label}</span></div>
-                  {tip.points.map((pt,i)=>(<div key={i} style={{position:"relative"}}>{i>0&&<div style={{position:"absolute",top:0,left:16,right:0,height:"0.5px",background:"var(--sep-strong)"}}/>}<div style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 16px"}}><span style={{flexShrink:0,display:"flex",alignItems:"center",color:"var(--t2)",marginTop:2}}><TipIcon name={pt.icon} size={18}/></span><p style={{margin:0,fontSize:14,lineHeight:1.6,color:"var(--t2)",fontWeight:500}}>{pt.text}</p></div></div>))}
+              ):(aiTips||[]).map((tip,ti)=>{
+                const col=colorMap[tip.colorKey]||"var(--acc)";
+                return(
+                <div key={ti} style={{background:"var(--card)",borderRadius:14,overflow:"hidden",marginBottom:12,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10,padding:"13px 16px",borderBottom:"0.5px solid var(--sep-strong)"}}>
+                    <div style={{width:8,height:8,borderRadius:"50%",background:col,flexShrink:0}}/>
+                    <span style={{fontSize:15,fontWeight:600,color:"var(--t1)"}}>{tip.label}</span>
+                  </div>
+                  {(tip.points||[]).map((pt,i)=>(<div key={i} style={{position:"relative"}}>{i>0&&<div style={{position:"absolute",top:0,left:16,right:0,height:"0.5px",background:"var(--sep-strong)"}}/>}<div style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 16px"}}><span style={{flexShrink:0,display:"flex",alignItems:"center",color:col,marginTop:2}}><TipIcon name={pt.icon} size={18}/></span><p style={{margin:0,fontSize:14,lineHeight:1.6,color:"var(--t2)",fontWeight:500}}>{pt.text}</p></div></div>))}
                   <div style={{padding:"10px 16px",borderTop:"0.5px solid var(--sep)"}}><p style={{margin:0,fontSize:11,color:"var(--t3)",fontStyle:"italic"}}>Always follow your doctor's instructions. This is general information only.</p></div>
                 </div>
-              ))}
+              );})}
             </div>);
           })()}
           <div style={{textAlign:"center",fontSize:12,color:"var(--t3)",paddingTop:16,paddingBottom:12,letterSpacing:"0.02em"}} className="safe-bottom">Synced to cloud · Resets at midnight</div>
@@ -1017,7 +1061,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 <script>
 if("serviceWorker"in navigator){
-  const sw='const C="pr-v66",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
+  const sw='const C="pr-v67",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
