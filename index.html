@@ -7,10 +7,10 @@
   <meta name="theme-color" content="#1c1c1e" media="(prefers-color-scheme: dark)"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <meta name="apple-mobile-web-app-title" content="Pill Reminder"/>
-  <title>Pill Reminder</title>
+  <meta name="apple-mobile-web-app-title" content="Posology"/>
+  <title>Posology</title>
   <script>
-    const manifestData={name:"Pill Reminder",short_name:"Pills",start_url:"./",display:"standalone",background_color:"#f5efe8",theme_color:"#f5efe8",orientation:"portrait",icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='110' fill='%23e05e00'/%3E%3Crect x='100' y='216' width='312' height='80' rx='40' fill='white' opacity='.9'/%3E%3C/svg%3E",sizes:"any",type:"image/svg+xml",purpose:"any maskable"}]};
+    const manifestData={name:"Posology",short_name:"Posology",start_url:"./",display:"standalone",background_color:"#1a1410",theme_color:"#1a1410",orientation:"portrait",icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='110' fill='%231a1410'/%3E%3Cg transform='translate(256%2C256) rotate(-66)'%3E%3CclipPath id='p'%3E%3Crect x='-130' y='-44' width='260' height='88' rx='44'/%3E%3C/clipPath%3E%3Crect x='-130' y='-44' width='130' height='88' fill='%23faf7f2' clip-path='url(%23p)'/%3E%3Crect x='-130' y='-44' width='260' height='88' rx='44' stroke='%23faf7f2' stroke-width='18' fill='none'/%3E%3Cline x1='0' y1='-44' x2='0' y2='44' stroke='%231a1410' stroke-width='14'/%3E%3C/g%3E%3C/svg%3E",sizes:"any",type:"image/svg+xml",purpose:"any maskable"}]};
     const bl=new Blob([JSON.stringify(manifestData)],{type:"application/manifest+json"});
     const ml=document.createElement("link");ml.rel="manifest";ml.href=URL.createObjectURL(bl);document.head.appendChild(ml);
   </script>
@@ -51,6 +51,9 @@
         --shadow-lg:0 4px 14px rgba(0,0,0,0.42),0 1px 3px rgba(0,0,0,0.24);
       }
     }
+    @keyframes splashFade{0%{opacity:1}75%{opacity:1}100%{opacity:0}}
+    #splash{position:fixed;inset:0;z-index:9999;background:#faf7f2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;animation:splashFade 1.8s ease forwards;pointer-events:none;}
+    #splash.gone{display:none;}
     @keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.42)}75%{transform:scale(0.92)}100%{transform:scale(1)}}
     .pop{animation:pop 0.38s cubic-bezier(0.34,1.56,0.64,1);}
     @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
@@ -65,15 +68,51 @@
   </style>
 </head>
 <body style="background:var(--bg)">
+<div id="splash"><div style="display:flex;align-items:flex-end;gap:0;"><span style="font-family:'DM Serif Display',Georgia,serif;font-size:52px;color:#1a1410;letter-spacing:-0.01em;line-height:1;">Posology</span><svg width="28" height="20" viewBox="0 0 28 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-left:-10px;margin-bottom:4px;align-self:flex-end;"><g transform="translate(14,10) rotate(-66)"><clipPath id="pc-sp"><rect x="-9" y="-3" width="18" height="6" rx="3"/></clipPath><rect x="-9" y="-3" width="9" height="6" fill="#1a1410" clip-path="url(#pc-sp)"/><rect x="-9" y="-3" width="18" height="6" rx="3" stroke="#1a1410" stroke-width="1.5" fill="none"/><line x1="0" y1="-3" x2="0" y2="3" stroke="#1a1410" stroke-width="1"/></g></svg></div><p style="font-family:'DM Sans',sans-serif;font-size:12px;font-weight:400;letter-spacing:0.18em;text-transform:uppercase;color:#c87941;margin:0;">Medication tracker</p></div>
+<script>setTimeout(function(){var s=document.getElementById("splash");if(s){s.addEventListener("animationend",function(){s.classList.add("gone");});}},100);</script>
 <div id="root"></div>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script type="text/babel">
 const {useState,useEffect,useCallback,useRef}=React;
+
+// ── Supabase config ──────────────────────────────────────────────
+const SUPA_URL="https://fotzkqkghxndjnomrspr.supabase.co";
+const SUPA_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvdHprcWtnaHhuZGpub21yc3ByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MTg0MTMsImV4cCI6MjA5NjM5NDQxM30.o8AyVFlhd_g0NbdB1hd28x8ERxmCO4OjXPuwVoCJano";
+
+// ── Token resolution ─────────────────────────────────────────────
+function resolveToken(){
+  const params=new URLSearchParams(window.location.search);
+  const urlToken=params.get("u");
+  if(urlToken){localStorage.setItem("pr:token",urlToken);return urlToken;}
+  return localStorage.getItem("pr:token")||null;
+}
+const USER_TOKEN=resolveToken();
+
+// ── Supabase KV helpers ──────────────────────────────────────────
+async function sbGet(key){
+  if(!USER_TOKEN)return null;
+  const res=await fetch(`${SUPA_URL}/rest/v1/data?user_token=eq.${encodeURIComponent(USER_TOKEN)}&key=eq.${encodeURIComponent(key)}&select=value`,{headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+  if(!res.ok)return null;
+  const rows=await res.json();
+  return rows.length?rows[0].value:null;
+}
+async function sbSet(key,value){
+  if(!USER_TOKEN)return;
+  await fetch(`${SUPA_URL}/rest/v1/data`,{method:"POST",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({user_token:USER_TOKEN,key,value,updated_at:new Date().toISOString()})});
+}
+async function sbGetAllDayKeys(prefix){
+  if(!USER_TOKEN)return[];
+  const res=await fetch(`${SUPA_URL}/rest/v1/data?user_token=eq.${encodeURIComponent(USER_TOKEN)}&key=like.${encodeURIComponent(prefix+'*')}&select=key,value&order=key.desc`,{headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+  if(!res.ok)return[];
+  return await res.json();
+}
+
 const PILL_LIST_KEY="pr:list",ARCHIVED_KEY="pr:archived",PROFILE_KEY="pr:profile";
 const dayKey=d=>`pr:day:${d}`;
 const asNeededDayKey=d=>`pr:asneeded:${d}`;
+
 function fmtTime(ts){const d=new Date(ts);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");}
 function todayStr(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 function formatDayHeader(str){const[y,m,d]=str.split("-").map(Number);const dt=new Date(y,m-1,d);return{weekday:dt.toLocaleDateString("en-US",{weekday:"long"}),date:dt.toLocaleDateString("en-US",{month:"long",day:"numeric"})};}
@@ -81,13 +120,6 @@ function formatShort(str){const[y,m,d]=str.split("-").map(Number);return new Dat
 function formatFull(str){const[y,m,d]=str.split("-").map(Number);return new Date(y,m-1,d).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});}
 function getLast30Days(){return Array.from({length:30},(_,i)=>{const d=new Date();d.setDate(d.getDate()-i);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");});}
 function addDays(str,n){const[y,m,d]=str.split("-").map(Number);const dt=new Date(y,m-1,d);dt.setDate(dt.getDate()+n);return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");}
-
-const DB_NAME="pill-reminder",DB_VER=1,DB_STORE="kv";
-let _db=null;
-function openDB(){if(_db)return Promise.resolve(_db);return new Promise((res,rej)=>{const r=indexedDB.open(DB_NAME,DB_VER);r.onupgradeneeded=e=>{e.target.result.createObjectStore(DB_STORE);};r.onsuccess=e=>{_db=e.target.result;res(_db);};r.onerror=rej;});}
-async function dbGet(k){const db=await openDB();return new Promise((res,rej)=>{const r=db.transaction(DB_STORE,"readonly").objectStore(DB_STORE).get(k);r.onsuccess=()=>res(r.result??null);r.onerror=rej;});}
-async function dbSet(k,v){const db=await openDB();return new Promise((res,rej)=>{const tx=db.transaction(DB_STORE,"readwrite");tx.objectStore(DB_STORE).put(v,k);tx.oncomplete=res;tx.onerror=rej;});}
-async function migrateFromLS(){const keys=[PILL_LIST_KEY,...getLast30Days().map(d=>dayKey(d))];for(const k of keys){try{const lsVal=localStorage.getItem(k);if(lsVal){const existing=await dbGet(k);if(existing===null)await dbSet(k,JSON.parse(lsVal));localStorage.removeItem(k);}}catch{}}}
 
 const DEFAULT_PILLS={morning:[],lunch:[],evening:[],as_needed:[]};
 const TIMING_OPTIONS=[
@@ -157,9 +189,8 @@ const IconCheck=()=><svg width="11" height="11" viewBox="0 0 24 24" fill="none">
 const IconPlus=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>;
 const IconTrash=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><polyline points="3 6 5 6 21 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M9 6V4h6v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>;
 const IconBack=()=><svg width="10" height="18" viewBox="0 0 10 18" fill="none"><polyline points="9 1 1 9 9 17" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-const IconFork=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M8 3v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="9" x2="12" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>;
-const IconChevron=()=><svg width="7" height="13" viewBox="0 0 7 13" fill="none"><polyline points="1 1 6 6.5 1 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 const IconArchive=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="2" y="4" width="20" height="5" rx="1" stroke="currentColor" strokeWidth="2"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9" stroke="currentColor" strokeWidth="2"/><path d="M10 13h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>;
+const IconChevron=()=><svg width="7" height="13" viewBox="0 0 7 13" fill="none"><polyline points="1 1 6 6.5 1 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 const IconTabToday=({active})=><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="17" rx="3" stroke="currentColor" strokeWidth={active?"2":"1.7"} fill="none"/><line x1="3" y1="9" x2="21" y2="9" stroke="currentColor" strokeWidth={active?"2":"1.7"}/><line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" strokeWidth={active?"2":"1.7"} strokeLinecap="round"/><line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" strokeWidth={active?"2":"1.7"} strokeLinecap="round"/>{active&&<rect x="7" y="13" width="4" height="4" rx="1" fill="currentColor"/>}</svg>;
 const IconTabHistory=({active})=><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth={active?"2":"1.7"}/><polyline points="12 7 12 12 15.5 14.5" stroke="currentColor" strokeWidth={active?"2":"1.7"} strokeLinecap="round" strokeLinejoin="round"/></svg>;
 const IconTabSettings=({active})=><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" stroke="currentColor" strokeWidth={active?"2":"1.7"}/><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth={active?"2":"1.7"}/></svg>;
@@ -209,7 +240,7 @@ function PillForm({initial,accent,onSave,onCancel,submitLabel="Add",defaultSessi
   const [ongoing,setOngoing]=useState(initial?.durationDays==null);
   const [durationDays,setDurationDays]=useState(initial?.durationDays||7);
   const [startDate,setStartDate]=useState(initial?.startDate||todayStr());
-  const [asNeeded,setAsNeeded]=useState(initial?.asNeeded!=null?initial.asNeeded:initial?.id?false:false);
+  const [asNeeded,setAsNeeded]=useState(initial?.asNeeded!=null?initial.asNeeded:false);
   const [maxDailyDose,setMaxDailyDose]=useState(initial?.maxDailyDose||3);
   const [minIntervalHours,setMinIntervalHours]=useState(initial?.minIntervalHours||4);
   const [schedules,setSchedules]=useState(()=>{
@@ -388,9 +419,9 @@ async function archiveExpired(pillList){
   const today=todayStr();const toArchive={morning:[],lunch:[],evening:[]},remaining={morning:[],lunch:[],evening:[]};let changed=false;
   for(const session of["morning","lunch","evening"]){for(const pill of(pillList[session]||[])){if(pill.durationDays!=null&&pill.startDate){const endDate=addDays(pill.startDate,pill.durationDays);if(today>=endDate){toArchive[session].push({...pill,archivedOn:today,endDate});changed=true;continue;}}remaining[session].push(pill);}}
   if(!changed)return pillList;
-  const existing=await dbGet(ARCHIVED_KEY)||{morning:[],lunch:[],evening:[]};
-  await dbSet(ARCHIVED_KEY,{morning:[...existing.morning,...toArchive.morning],lunch:[...existing.lunch||[],...toArchive.lunch],evening:[...existing.evening||[],...toArchive.evening]});
-  await dbSet(PILL_LIST_KEY,remaining);return remaining;
+  const existing=await sbGet(ARCHIVED_KEY)||{morning:[],lunch:[],evening:[]};
+  await sbSet(ARCHIVED_KEY,{morning:[...existing.morning,...toArchive.morning],lunch:[...existing.lunch||[],...toArchive.lunch],evening:[...existing.evening||[],...toArchive.evening]});
+  await sbSet(PILL_LIST_KEY,remaining);return remaining;
 }
 
 function buildActivePillsForDate(date,pillList,archived){
@@ -441,11 +472,24 @@ function TabBar({view,setView,setSelectedDay}){
   </div>);
 }
 
-function HistoryView({view,setView,selectedDay,setSelectedDay,history,pillList,archived,sessions,toggleHistoryTaken}){
+function HistoryView({view,setView,selectedDay,setSelectedDay,history,setHistory,pillList,archived,sessions,toggleHistoryTaken}){
+  const [showingAll,setShowingAll]=useState(false);
+  const [loadingMore,setLoadingMore]=useState(false);
+
+  async function loadAll(){
+    setLoadingMore(true);
+    const rows=await sbGetAllDayKeys("pr:day:");
+    const all=rows.map(r=>({date:r.key.replace("pr:day:",""),log:r.value})).filter(r=>r.log!==null).sort((a,b)=>b.date.localeCompare(a.date));
+    setHistory(all);
+    setShowingAll(true);
+    setLoadingMore(false);
+  }
+
   const archiveEvents=[];
   for(const session of["morning","lunch","evening"]){for(const pill of(archived[session]||[])){if(pill.endDate)archiveEvents.push({date:pill.endDate,pill,session});}}
   const archiveByDate={};
   for(const ev of archiveEvents){if(!archiveByDate[ev.date])archiveByDate[ev.date]=[];archiveByDate[ev.date].push(ev);}
+
   return(<div style={{minHeight:"100vh",background:"var(--bg)",paddingBottom:"calc(90px + env(safe-area-inset-bottom,0px))"}} className="fade-up">
     <div style={{maxWidth:480,margin:"0 auto"}}>
       <div style={{background:"var(--card)",borderRadius:"0 0 24px 24px",boxShadow:"var(--shadow-md)",marginBottom:6,paddingTop:"calc(env(safe-area-inset-top,20px) + 16px)",paddingBottom:18,paddingLeft:20,paddingRight:20,backgroundImage:"radial-gradient(ellipse at 110% -10%, var(--acc-glow) 0%, transparent 60%)"}}>
@@ -454,7 +498,7 @@ function HistoryView({view,setView,selectedDay,setSelectedDay,history,pillList,a
           <div style={{fontSize:13,color:"var(--t2)",fontWeight:500,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:4}}>{weekday}</div>
           <h1 className="serif" style={{fontSize:34,fontWeight:400,color:"var(--t1)",letterSpacing:"-0.01em",lineHeight:1.1}}>{date}</h1>
         </>);})():(<>
-          <div style={{fontSize:13,color:"var(--t2)",fontWeight:500,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:4}}>Last 30 days</div>
+          <div style={{fontSize:13,color:"var(--t2)",fontWeight:500,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:4}}>{showingAll?"All time":"Last 30 days"}</div>
           <h1 className="serif" style={{fontSize:34,fontWeight:400,color:"var(--t1)",letterSpacing:"-0.01em",lineHeight:1.1}}>History</h1>
         </>)}
       </div>
@@ -492,6 +536,7 @@ function HistoryView({view,setView,selectedDay,setSelectedDay,history,pillList,a
             })}</GroupCard>)}
           </>);
         })():(
+          <>
           <GroupCard label="Log">
             {history.length===0&&Object.keys(archiveByDate).length===0
               ?<div style={{padding:"20px 18px",color:"var(--t3)",fontSize:15,fontStyle:"italic",textAlign:"center"}}>No history yet</div>
@@ -531,6 +576,12 @@ function HistoryView({view,setView,selectedDay,setSelectedDay,history,pillList,a
                 });
               })()}
           </GroupCard>
+          {!showingAll&&USER_TOKEN&&(
+            <button onClick={loadAll} disabled={loadingMore} style={{width:"100%",padding:"13px",borderRadius:14,border:"none",background:"var(--card)",color:"var(--acc)",fontSize:15,fontWeight:600,boxShadow:"var(--shadow-sm)",marginTop:-16,marginBottom:24,cursor:"pointer",opacity:loadingMore?0.6:1}}>
+              {loadingMore?"Loading…":"Show all history"}
+            </button>
+          )}
+          </>
         )}
       </div>
     </div>
@@ -538,8 +589,6 @@ function HistoryView({view,setView,selectedDay,setSelectedDay,history,pillList,a
 }
 
 function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchived,fileInputRef}){
-  async function exportData(){const days=getLast30Days();const logs={};for(const d of days){const l=await dbGet(dayKey(d));if(l)logs[d]=l;}const data={pillList,archived,logs,profile,exportedAt:new Date().toISOString()};const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="pill-reminder-backup.json";a.click();URL.revokeObjectURL(url);}
-  async function importData(file){try{const text=await file.text();const data=JSON.parse(text);if(data.pillList){await dbSet(PILL_LIST_KEY,data.pillList);setPillList(data.pillList);}if(data.archived){await dbSet(ARCHIVED_KEY,data.archived);setArchived(data.archived);}if(data.logs){for(const[d,l]of Object.entries(data.logs))await dbSet(dayKey(d),l);}if(data.profile){await dbSet(PROFILE_KEY,data.profile);setProfile(data.profile);}alert("Import successful!");}catch{alert("Import failed — invalid file.");}}
   return(<div style={{minHeight:"100vh",background:"var(--bg)",paddingBottom:"calc(90px + env(safe-area-inset-bottom,0px))"}} className="fade-up">
     <div style={{maxWidth:480,margin:"0 auto"}}>
       <div style={{background:"var(--card)",borderRadius:"0 0 24px 24px",boxShadow:"var(--shadow-md)",marginBottom:6,paddingTop:"calc(env(safe-area-inset-top,20px) + 20px)",paddingBottom:18,paddingLeft:20,paddingRight:20}}>
@@ -554,7 +603,7 @@ function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchi
               <div key={field} style={{position:"relative"}}>{i>0&&<div style={{position:"absolute",top:0,left:16,right:0,height:"0.5px",background:"var(--sep)"}}/>}
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}>
                   <span style={{fontSize:15,color:"var(--t2)",fontWeight:500}}>{label}</span>
-                  <input type={type} value={profile[field]||""} placeholder={placeholder} onChange={e=>{const v=e.target.value;const newP={...profile,[field]:v};setProfile(newP);dbSet(PROFILE_KEY,newP);}} style={{border:"none",background:"transparent",color:"var(--t1)",fontSize:15,fontWeight:500,textAlign:"right",width,WebkitAppearance:"none"}}/>
+                  <input type={type} value={profile[field]||""} placeholder={placeholder} onChange={e=>{const v=e.target.value;const newP={...profile,[field]:v};setProfile(newP);sbSet(PROFILE_KEY,newP);}} style={{border:"none",background:"transparent",color:"var(--t1)",fontSize:15,fontWeight:500,textAlign:"right",width,WebkitAppearance:"none"}}/>
                 </div>
               </div>
             ))}
@@ -563,24 +612,54 @@ function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchi
         <div style={{marginBottom:28}}>
           <div style={{fontSize:12,fontWeight:600,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:10}}>Data</div>
           <div style={{background:"var(--card)",borderRadius:16,overflow:"hidden",boxShadow:"var(--shadow-sm)"}}>
-            <button onClick={exportData} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"15px 16px",background:"transparent",color:"var(--t1)",fontSize:15,fontWeight:500,textAlign:"left"}}>Export backup<span style={{fontSize:13,color:"var(--blue)"}}>Download JSON</span></button>
-            <div style={{height:"0.5px",background:"var(--sep)"}}/>
-            <button onClick={()=>fileInputRef.current?.click()} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"15px 16px",background:"transparent",color:"var(--t1)",fontSize:15,fontWeight:500,textAlign:"left"}}>Import backup<span style={{fontSize:13,color:"var(--blue)"}}>Choose file</span></button>
-            <input ref={fileInputRef} type="file" accept=".json" style={{display:"none"}} onChange={e=>{if(e.target.files?.[0])importData(e.target.files[0]);}}/>
+            <button onClick={()=>fileInputRef.current?.click()} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"15px 16px",background:"transparent",color:"var(--t1)",fontSize:15,fontWeight:500,textAlign:"left"}}>Import backup<span style={{fontSize:13,color:"var(--blue)"}}>Choose JSON</span></button>
+            <input ref={fileInputRef} type="file" accept=".json" style={{display:"none"}} onChange={async e=>{
+              const file=e.target.files?.[0];if(!file)return;
+              try{
+                const text=await file.text();const data=JSON.parse(text);
+                if(data.pillList){await sbSet(PILL_LIST_KEY,data.pillList);setPillList(data.pillList);}
+                if(data.archived){await sbSet(ARCHIVED_KEY,data.archived);setArchived(data.archived);}
+                if(data.logs){for(const[d,l]of Object.entries(data.logs))await sbSet(dayKey(d),l);}
+                if(data.profile){await sbSet(PROFILE_KEY,data.profile);setProfile(data.profile);}
+                alert("Import successful!");
+              }catch{alert("Import failed — invalid file.");}
+            }}/>
+          </div>
+        </div>
+        <div style={{marginBottom:28}}>
+          <div style={{fontSize:12,fontWeight:600,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:10}}>Account</div>
+          <div style={{background:"var(--card)",borderRadius:16,overflow:"hidden",boxShadow:"var(--shadow-sm)"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}>
+              <span style={{fontSize:15,color:"var(--t2)"}}>Your token</span>
+              <span style={{fontSize:13,color:"var(--t1)",fontWeight:500,fontFamily:"monospace"}}>{USER_TOKEN||"None"}</span>
+            </div>
           </div>
         </div>
         <div style={{marginBottom:28}}>
           <div style={{fontSize:12,fontWeight:600,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:10}}>About</div>
           <div style={{background:"var(--card)",borderRadius:16,overflow:"hidden",boxShadow:"var(--shadow-sm)"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>App</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Pill Reminder</span></div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>App</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Posology</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v58</span></div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v61</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Storage</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Local · IndexedDB</span></div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Storage</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Supabase</span></div>
           </div>
         </div>
-        <p style={{fontSize:12,color:"var(--t3)",textAlign:"center",lineHeight:1.6,paddingBottom:12}} className="safe-bottom">Data is stored locally on this device only.<br/>Nothing is sent to any server.</p>
+        <p style={{fontSize:12,color:"var(--t3)",textAlign:"center",lineHeight:1.6,paddingBottom:12}} className="safe-bottom">Data is synced to the cloud.<br/>Your token is your key — keep the link safe.</p>
       </div>
+    </div>
+  </div>);
+}
+
+// ── No-token screen ───────────────────────────────────────────────
+function NoTokenView(){
+  return(<div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center",padding:32}}>
+    <div style={{background:"var(--card)",borderRadius:20,padding:28,boxShadow:"var(--shadow-lg)",textAlign:"center",maxWidth:340}}>
+      <div style={{width:56,height:56,borderRadius:16,background:"var(--acc-soft)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",color:"var(--acc)"}}>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <div style={{fontSize:20,fontWeight:700,color:"var(--t1)",marginBottom:8}}>Access required</div>
+      <div style={{fontSize:15,color:"var(--t2)",lineHeight:1.6}}>Open the link you received to access your Pill Reminder. The link looks like:<br/><br/><span style={{fontFamily:"monospace",fontSize:13,color:"var(--acc)"}}>pill-reminder/?u=yourtoken</span></div>
     </div>
   </div>);
 }
@@ -606,26 +685,28 @@ function App(){
   useEffect(()=>{const t=setInterval(()=>setNow(Date.now()),30000);return()=>clearInterval(t);},[]);
   useEffect(()=>{const h=e=>{e.preventDefault();setInstallPrompt(e);};window.addEventListener("beforeinstallprompt",h);window.addEventListener("appinstalled",()=>{setInstalled(true);setInstallPrompt(null);});return()=>window.removeEventListener("beforeinstallprompt",h);},[]);
 
-  useEffect(()=>{(async()=>{
-    await migrateFromLS();
-    let list=await dbGet(PILL_LIST_KEY)||DEFAULT_PILLS;
-    if(list.night&&!list.evening){list={...list,evening:list.night,lunch:list.lunch||[]};delete list.night;await dbSet(PILL_LIST_KEY,list);}
-    if(!list.lunch)list={...list,lunch:[]};
-    if(!list.as_needed)list={...list,as_needed:[]};
-    list=await archiveExpired(list);
-    for(const sess of["morning","lunch","evening"]){list[sess]=(list[sess]||[]).map(p=>{if(p.schedules)return p;const sessions=p.sessions||(p.session&&p.session!=="as_needed"?[p.session]:[sess]);const timings=p.timings||(p.timing?[p.timing]:[]);return{...p,schedules:sessions.map((s,i)=>({session:s,timing:timings[i]||""})),sessions};});}
-    setPillList(list);
-    const arch=await dbGet(ARCHIVED_KEY)||{morning:[],lunch:[],evening:[]};
-    if(arch.night&&!arch.evening){arch.evening=arch.night;delete arch.night;}if(!arch.lunch)arch.lunch=[];
-    setArchived(arch);
-    const prof=await dbGet(PROFILE_KEY)||{name:"",age:"",weight:"",height:""};setProfile(prof);
-    const today=todayStr();let log=await dbGet(dayKey(today));
-    if(!log){log=buildEmptyLog(list);await dbSet(dayKey(today),log);}
-    setTodayLog(log);
-    const ts=await dbGet(asNeededDayKey(today))||{};
-    setAsNeededTs(ts);
-    setLoading(false);
-  })();},[]);
+  useEffect(()=>{
+    if(!USER_TOKEN){setLoading(false);return;}
+    (async()=>{
+      let list=await sbGet(PILL_LIST_KEY)||DEFAULT_PILLS;
+      if(list.night&&!list.evening){list={...list,evening:list.night,lunch:list.lunch||[]};delete list.night;}
+      if(!list.lunch)list={...list,lunch:[]};
+      if(!list.as_needed)list={...list,as_needed:[]};
+      list=await archiveExpired(list);
+      for(const sess of["morning","lunch","evening"]){list[sess]=(list[sess]||[]).map(p=>{if(p.schedules)return p;const sessions=p.sessions||(p.session&&p.session!=="as_needed"?[p.session]:[sess]);const timings=p.timings||(p.timing?[p.timing]:[]);return{...p,schedules:sessions.map((s,i)=>({session:s,timing:timings[i]||""})),sessions};});}
+      setPillList(list);
+      const arch=await sbGet(ARCHIVED_KEY)||{morning:[],lunch:[],evening:[]};
+      if(arch.night&&!arch.evening){arch.evening=arch.night;delete arch.night;}if(!arch.lunch)arch.lunch=[];
+      setArchived(arch);
+      const prof=await sbGet(PROFILE_KEY)||{name:"",age:"",weight:"",height:""};setProfile(prof);
+      const today=todayStr();let log=await sbGet(dayKey(today));
+      if(!log){log=buildEmptyLog(list);await sbSet(dayKey(today),log);}
+      setTodayLog(log);
+      const ts=await sbGet(asNeededDayKey(today))||{};
+      setAsNeededTs(ts);
+      setLoading(false);
+    })();
+  },[]);
 
   function buildEmptyLog(list){
     const m={},l={},e={};
@@ -637,11 +718,15 @@ function App(){
     return{morning:m,lunch:l,evening:e,as_needed:{}};
   }
 
-  const loadHistory=useCallback(async()=>{const days=getLast30Days();const results=await Promise.all(days.map(async d=>({date:d,log:await dbGet(dayKey(d))})));setHistory(results.filter(r=>r.log!==null));},[]);
+  const loadHistory=useCallback(async()=>{
+    const days=getLast30Days();
+    const results=await Promise.all(days.map(async d=>({date:d,log:await sbGet(dayKey(d))})));
+    setHistory(results.filter(r=>r.log!==null));
+  },[]);
   useEffect(()=>{if(view==="history")loadHistory();},[view,loadHistory]);
 
-  async function toggleTaken(session,id){const newLog={...todayLog,[session]:{...todayLog[session],[id]:!todayLog[session][id]}};setTodayLog(newLog);await dbSet(dayKey(todayStr()),newLog);if(newLog[session][id]){setFlash(id);setTimeout(()=>setFlash(null),400);}}
-  async function toggleHistoryTaken(date,session,id){const existing=await dbGet(dayKey(date))||{morning:{},lunch:{},evening:{}};const newLog={...existing,[session]:{...existing[session],[id]:!existing[session]?.[id]}};await dbSet(dayKey(date),newLog);setHistory(prev=>prev.map(h=>h.date===date?{...h,log:newLog}:h));}
+  async function toggleTaken(session,id){const newLog={...todayLog,[session]:{...todayLog[session],[id]:!todayLog[session][id]}};setTodayLog(newLog);await sbSet(dayKey(todayStr()),newLog);if(newLog[session][id]){setFlash(id);setTimeout(()=>setFlash(null),400);}}
+  async function toggleHistoryTaken(date,session,id){const existing=await sbGet(dayKey(date))||{morning:{},lunch:{},evening:{}};const newLog={...existing,[session]:{...existing[session],[id]:!existing[session]?.[id]}};await sbSet(dayKey(date),newLog);setHistory(prev=>prev.map(h=>h.date===date?{...h,log:newLog}:h));}
 
   async function addPill(defaultSession,pillData){
     const{sessions:pillSessions=null,schedules:pillSchedules=null,session:legacySess,...rest}=pillData;
@@ -653,7 +738,7 @@ function App(){
     let newLog={...todayLog};
     for(const s of sessList){if(s!=="as_needed")newLog={...newLog,[s]:{...newLog[s],[id]:false}};}
     setPillList(newList);setTodayLog(newLog);
-    await dbSet(PILL_LIST_KEY,newList);await dbSet(dayKey(todayStr()),newLog);
+    await sbSet(PILL_LIST_KEY,newList);await sbSet(dayKey(todayStr()),newLog);
     setAddSheet(null);
   }
 
@@ -662,10 +747,10 @@ function App(){
     const existing=asNeededTs[id]||[];
     const newTs={...asNeededTs,[id]:[...existing,ts]};
     setAsNeededTs(newTs);
-    await dbSet(asNeededDayKey(today),newTs);
+    await sbSet(asNeededDayKey(today),newTs);
     const logExisting=todayLog.as_needed?.[id]||[];
     const newLog={...todayLog,as_needed:{...todayLog.as_needed,[id]:[...logExisting,ts]}};
-    setTodayLog(newLog);await dbSet(dayKey(today),newLog);
+    setTodayLog(newLog);await sbSet(dayKey(today),newLog);
     setFlash(id);setTimeout(()=>setFlash(null),400);
   }
 
@@ -674,7 +759,7 @@ function App(){
     const newLog={...todayLog,as_needed:{...todayLog.as_needed}};delete newLog.as_needed[id];
     const newTs={...asNeededTs};delete newTs[id];
     setPillList(newList);setTodayLog(newLog);setAsNeededTs(newTs);
-    await dbSet(PILL_LIST_KEY,newList);await dbSet(dayKey(todayStr()),newLog);await dbSet(asNeededDayKey(todayStr()),newTs);
+    await sbSet(PILL_LIST_KEY,newList);await sbSet(dayKey(todayStr()),newLog);await sbSet(asNeededDayKey(todayStr()),newTs);
   }
 
   async function deletePill(session,id){
@@ -685,12 +770,14 @@ function App(){
     let newLog={...todayLog};
     const sessionsToClean=pill?.schedules?pill.schedules.map(s=>s.session):pill?.sessions||[foundSess];
     for(const s of sessionsToClean){if(newLog[s]){newLog={...newLog,[s]:{...newLog[s]}};delete newLog[s][id];}}
-    setPillList(newList);setTodayLog(newLog);await dbSet(PILL_LIST_KEY,newList);await dbSet(dayKey(todayStr()),newLog);
+    setPillList(newList);setTodayLog(newLog);await sbSet(PILL_LIST_KEY,newList);await sbSet(dayKey(todayStr()),newLog);
   }
 
   const sessions=pillList?[{key:"morning",label:"Morning",Icon:IconSunrise,accent:"var(--acc)"},{key:"lunch",label:"Lunch",Icon:IconSun,accent:"var(--acc)"},{key:"evening",label:"Evening",Icon:IconMoon,accent:"var(--acc)"}]:[];
+
   if(loading)return(<div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:"var(--t2)",fontSize:14}}>Loading…</div></div>);
-  if(view==="history")return(<><HistoryView view={view} setView={setView} selectedDay={selectedDay} setSelectedDay={setSelectedDay} history={history} pillList={pillList} archived={archived} sessions={sessions} toggleHistoryTaken={toggleHistoryTaken}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay}/></>);
+  if(!USER_TOKEN)return <NoTokenView/>;
+  if(view==="history")return(<><HistoryView view={view} setView={setView} selectedDay={selectedDay} setSelectedDay={setSelectedDay} history={history} setHistory={setHistory} pillList={pillList} archived={archived} sessions={sessions} toggleHistoryTaken={toggleHistoryTaken}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay}/></>);
   if(view==="settings")return(<><SettingsView view={view} setView={setView} setSelectedDay={setSelectedDay} profile={profile} setProfile={setProfile} pillList={pillList} archived={archived} setPillList={setPillList} setArchived={setArchived} fileInputRef={fileInputRef}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay}/></>);
 
   const total=sessions.reduce((s,{key})=>s+getPillsForSession(pillList,key).length,0);
@@ -826,7 +913,7 @@ function App(){
               ))}
             </div>);
           })()}
-          <div style={{textAlign:"center",fontSize:12,color:"var(--t3)",paddingTop:16,paddingBottom:12,letterSpacing:"0.02em"}} className="safe-bottom">Saved locally · Resets at midnight</div>
+          <div style={{textAlign:"center",fontSize:12,color:"var(--t3)",paddingTop:16,paddingBottom:12,letterSpacing:"0.02em"}} className="safe-bottom">Synced to cloud · Resets at midnight</div>
         </div>
       </div>
     </div>
@@ -856,9 +943,9 @@ function App(){
           const sorted=[...newTs].sort((a,b)=>a-b);
           const newAsNeededTs={...asNeededTs,[pid]:sorted};
           setAsNeededTs(newAsNeededTs);
-          await dbSet(asNeededDayKey(todayStr()),newAsNeededTs);
+          await sbSet(asNeededDayKey(todayStr()),newAsNeededTs);
           const newLog={...todayLog,as_needed:{...todayLog.as_needed,[pid]:sorted}};
-          setTodayLog(newLog);await dbSet(dayKey(todayStr()),newLog);
+          setTodayLog(newLog);await sbSet(dayKey(todayStr()),newLog);
         }
         function tsToTimeInput(ts){const d=new Date(ts);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");}
         function timeInputToTs(val,refTs){const[h,m]=val.split(":").map(Number);const d=new Date(refTs||Date.now());d.setHours(h,m,0,0);return d.getTime();}
@@ -884,11 +971,7 @@ function App(){
             ))}
             <div style={{position:"relative"}}>
               {timestamps.length>0&&<div style={{position:"absolute",top:0,left:16,right:0,height:"0.5px",background:"var(--sep)"}}/>}
-              <button onClick={()=>{
-                const[h,m]=["09","00"];
-                const d=new Date();d.setHours(9,0,0,0);
-                updateTimestamps([...timestamps,d.getTime()]);
-              }} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"11px 16px",background:"transparent",border:"none",color:"var(--acc)",fontSize:14,fontWeight:600,cursor:"pointer",textAlign:"left"}}>
+              <button onClick={()=>{const d=new Date();d.setHours(9,0,0,0);updateTimestamps([...timestamps,d.getTime()]);}} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"11px 16px",background:"transparent",border:"none",color:"var(--acc)",fontSize:14,fontWeight:600,cursor:"pointer",textAlign:"left"}}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>
                 Add missed dose
               </button>
@@ -905,7 +988,7 @@ function App(){
             if(detailSheet.session==="as_needed"){
               const updatedPill={...detailSheet.pill,...rest,schedules:[],sessions:["as_needed"]};
               newList={...pillList,as_needed:(pillList.as_needed||[]).map(p=>p.id===id?updatedPill:p)};
-              setPillList(newList);await dbSet(PILL_LIST_KEY,newList);setDetailSheet(null);return;
+              setPillList(newList);await sbSet(PILL_LIST_KEY,newList);setDetailSheet(null);return;
             }
             const oldSchedules=detailSheet.pill.schedules||[{session:detailSheet.session,timing:""}];
             const oldSessions=oldSchedules.map(s=>s.session);
@@ -919,8 +1002,8 @@ function App(){
             let newLog={...todayLog};
             for(const s of oldSessions){if(!newSessList.includes(s)&&newLog[s]){newLog={...newLog,[s]:{...newLog[s]}};delete newLog[s][id];}}
             for(const s of newSessList){if(!oldSessions.includes(s)&&s!=="as_needed"){newLog={...newLog,[s]:{...newLog[s],[id]:false}};}}
-            setTodayLog(newLog);await dbSet(dayKey(todayStr()),newLog);
-            setPillList(newList);await dbSet(PILL_LIST_KEY,newList);setDetailSheet(null);
+            setTodayLog(newLog);await sbSet(dayKey(todayStr()),newLog);
+            setPillList(newList);await sbSet(PILL_LIST_KEY,newList);setDetailSheet(null);
           }}
           onCancel={()=>setDetailSheet(null)}
         />
@@ -933,7 +1016,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 <script>
 if("serviceWorker"in navigator){
-  const sw='const C="pr-v58",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
+  const sw='const C="pr-v61",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
