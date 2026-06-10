@@ -643,7 +643,7 @@ function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchi
           <div style={{background:"var(--card)",borderRadius:16,overflow:"hidden",boxShadow:"var(--shadow-sm)"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>App</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Posology</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v72</span></div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v73</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Storage</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Supabase</span></div>
           </div>
@@ -680,11 +680,17 @@ function App(){
   const [hasNewTips,setHasNewTips]=useState(false);
   const tipsRef=React.useRef(null);
   React.useEffect(()=>{
-    if(!hasNewTips||!tipsRef.current)return;
-    if(typeof IntersectionObserver==="undefined")return;
-    const obs=new IntersectionObserver(([e])=>{if(e.isIntersecting){setHasNewTips(false);obs.disconnect();}},{threshold:0.3});
-    obs.observe(tipsRef.current);
-    return()=>obs.disconnect();
+    if(!hasNewTips)return;
+    const scrollEl=document.querySelector(".today-scroll");
+    if(!scrollEl||!tipsRef.current)return;
+    function onScroll(){
+      const ref=tipsRef.current;
+      if(!ref)return;
+      const refTop=ref.getBoundingClientRect().top;
+      if(refTop<window.innerHeight*0.6){setHasNewTips(false);}
+    }
+    scrollEl.addEventListener("scroll",onScroll,{passive:true});
+    return()=>scrollEl.removeEventListener("scroll",onScroll);
   },[hasNewTips]);
   const [loading,setLoading]=useState(true);
   const [selectedDay,setSelectedDay]=useState(null);
@@ -844,7 +850,7 @@ function App(){
   const pct=total?taken/total:0,R=33,C=2*Math.PI*R,ringCol=pct===1?"var(--green)":"var(--acc)";
 
   return(<>
-    <div style={{minHeight:"100vh",background:"var(--bg)",paddingBottom:"calc(90px + env(safe-area-inset-bottom,0px))"}} className="fade-up">
+    <div style={{minHeight:"100vh",background:"var(--bg)",paddingBottom:"calc(90px + env(safe-area-inset-bottom,0px))"}} className="fade-up today-scroll">
       <div style={{maxWidth:480,margin:"0 auto"}}>
         <div style={{background:"var(--card)",borderRadius:"0 0 24px 24px",boxShadow:"var(--shadow-md)",marginBottom:6,paddingTop:"calc(env(safe-area-inset-top,20px) + 20px)",paddingBottom:18,paddingLeft:20,paddingRight:20,backgroundImage:"radial-gradient(ellipse at 110% -10%, var(--acc-glow) 0%, transparent 60%)"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
@@ -990,7 +996,7 @@ function App(){
       </div>
     </div>
 
-    {hasNewTips&&!tipsLoading&&<button onClick={()=>{tipsRef.current&&tipsRef.current.scrollIntoView({behavior:"smooth",block:"start"});}} style={{position:"fixed",bottom:"calc(80px + env(safe-area-inset-bottom,0px))",left:"50%",transform:"translateX(-50%)",zIndex:490,background:"var(--acc)",color:"#fff",border:"none",borderRadius:20,padding:"9px 18px",fontSize:13,fontWeight:600,boxShadow:"0 4px 16px rgba(200,121,65,0.35)",cursor:"pointer",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"}}>↓ New recommendations</button>}
+    {hasNewTips&&!tipsLoading&&<button onClick={()=>{tipsRef.current&&tipsRef.current.scrollIntoView({behavior:"smooth",block:"start"});setTimeout(()=>setHasNewTips(false),600);}} style={{position:"fixed",bottom:"calc(80px + env(safe-area-inset-bottom,0px))",left:"50%",transform:"translateX(-50%)",zIndex:490,background:"var(--acc)",color:"#fff",border:"none",borderRadius:20,padding:"9px 18px",fontSize:13,fontWeight:600,boxShadow:"0 4px 16px rgba(200,121,65,0.35)",cursor:"pointer",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"}}>↓ New recommendations</button>}
     <TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={hasNewTips}/>
 
     {addSheet&&(<BottomSheet onClose={()=>setAddSheet(null)}>
@@ -1090,7 +1096,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 <script>
 if("serviceWorker"in navigator){
-  const sw='const C="pr-v72",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
+  const sw='const C="pr-v73",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
