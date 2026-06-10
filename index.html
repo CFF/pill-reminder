@@ -694,20 +694,34 @@ function App(){
   const [aiTips,setAiTips]=useState(null);
   const [tipsLoading,setTipsLoading]=useState(false);
   const [hasNewTips,setHasNewTips]=useState(false);
+  const [newTipLabels,setNewTipLabels]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem("pr:newTipLabels")||"[]"));}catch{return new Set();}});
+  const tipCardRefs=React.useRef({});
   const tipsRef=React.useRef(null);
   React.useEffect(()=>{
-    if(!hasNewTips)return;
-    const scrollEl=document.querySelector(".today-scroll");
-    if(!scrollEl||!tipsRef.current)return;
-    function onScroll(){
-      const ref=tipsRef.current;
-      if(!ref)return;
-      const refTop=ref.getBoundingClientRect().top;
-      if(refTop<window.innerHeight*0.6){setHasNewTips(false);}
+    if(newTipLabels.size===0)return;
+    const observers=[];
+    for(const label of newTipLabels){
+      const el=tipCardRefs.current[label];
+      if(!el)continue;
+      const obs=new IntersectionObserver(([e])=>{
+        if(e.isIntersecting){
+          obs.disconnect();
+          setNewTipLabels(prev=>{
+            const next=new Set(prev);
+            next.delete(label);
+            const seenRaw=JSON.parse(localStorage.getItem("pr:seenTipLabels")||"[]");
+            if(!seenRaw.includes(label))seenRaw.push(label);
+            localStorage.setItem("pr:seenTipLabels",JSON.stringify(seenRaw));
+            if(next.size===0)setHasNewTips(false);
+            return next;
+          });
+        }
+      },{threshold:0.9});
+      obs.observe(el);
+      observers.push(obs);
     }
-    scrollEl.addEventListener("scroll",onScroll,{passive:true});
-    return()=>scrollEl.removeEventListener("scroll",onScroll);
-  },[hasNewTips]);
+    return()=>observers.forEach(o=>o.disconnect());
+  },[newTipLabels]);
   const [loading,setLoading]=useState(true);
   const [selectedDay,setSelectedDay]=useState(null);
   const [installPrompt,setInstallPrompt]=useState(null);
@@ -787,7 +801,7 @@ function App(){
     const hashKey="pr:tips:"+btoa(unescape(encodeURIComponent(pillsDesc))).slice(0,40);
     try{
       const cached=await sbGet(hashKey);
-      if(cached&&Array.isArray(cached)){setAiTips(cached);setHasNewTips(true);setTipsLoading(false);return;}
+      if(cached&&Array.isArray(cached)){setAiTips(cached);const seenRaw=JSON.parse(localStorage.getItem("pr:seenTipLabels")||"[]");const newLabels=cached.map(t=>t.label).filter(l=>!seenRaw.includes(l));if(newLabels.length>0){setNewTipLabels(new Set(newLabels));setHasNewTips(true);}else{setHasNewTips(false);}setTipsLoading(false);return;}
     }catch{}
     setTipsLoading(true);
     try{
@@ -799,7 +813,7 @@ function App(){
       const tips=await res.json();
       if(Array.isArray(tips)){
         setAiTips(tips);
-        setHasNewTips(true);
+        const seenRaw=JSON.parse(localStorage.getItem("pr:seenTipLabels")||"[]");const newLabels=tips.map(t=>t.label).filter(l=>!seenRaw.includes(l));if(newLabels.length>0){setNewTipLabels(new Set(newLabels));setHasNewTips(true);}else{setHasNewTips(false);}
         await sbSet(hashKey,tips);
       }
     }catch(e){console.error("Tips error",e);setAiTips([]);}
@@ -1015,7 +1029,7 @@ function App(){
       </div>
     </div>
 
-    {(hasNewTips||tipsLoading)&&(()=>{const ready=hasNewTips&&!tipsLoading;return(<button onClick={ready?()=>{tipsRef.current&&tipsRef.current.scrollIntoView({behavior:"smooth",block:"start"});setTimeout(()=>setHasNewTips(false),600);}:null} style={{position:"fixed",bottom:"calc(80px + env(safe-area-inset-bottom,0px))",left:"50%",transform:"translateX(-50%)",zIndex:490,background:ready?"var(--acc)":"#888",color:"#fff",border:"none",borderRadius:20,padding:"9px 18px",fontSize:13,fontWeight:600,boxShadow:ready?"0 4px 16px rgba(200,121,65,0.35)":"0 4px 16px rgba(0,0,0,0.2)",cursor:ready?"pointer":"default",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",transition:"background 0.3s"}}>{ready?<span>↓</span>:<div style={{width:13,height:13,border:"2px solid rgba(255,255,255,0.4)",borderTopColor:"#fff",borderRadius:"50%",animation:"spin 0.8s linear infinite",flexShrink:0}}/>}<span>New recommendations</span></button>);})()}
+    {(hasNewTips||tipsLoading)&&(()=>{const ready=hasNewTips&&!tipsLoading;return(<button onClick={ready?()=>{const firstNewLabel=[...newTipLabels][0];const el=firstNewLabel&&tipCardRefs.current[firstNewLabel];(el||tipsRef.current)&&(el||tipsRef.current).scrollIntoView({behavior:"smooth",block:"center"});}:null} style={{position:"fixed",bottom:"calc(80px + env(safe-area-inset-bottom,0px))",left:"50%",transform:"translateX(-50%)",zIndex:490,background:ready?"var(--acc)":"#888",color:"#fff",border:"none",borderRadius:20,padding:"9px 18px",fontSize:13,fontWeight:600,boxShadow:ready?"0 4px 16px rgba(200,121,65,0.35)":"0 4px 16px rgba(0,0,0,0.2)",cursor:ready?"pointer":"default",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",transition:"background 0.3s"}}>{ready?<span>↓</span>:<div style={{width:13,height:13,border:"2px solid rgba(255,255,255,0.4)",borderTopColor:"#fff",borderRadius:"50%",animation:"spin 0.8s linear infinite",flexShrink:0}}/>}<span>New recommendations</span></button>);})()}
     <TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={hasNewTips}/>
 
     {addSheet&&(<BottomSheet onClose={()=>setAddSheet(null)}>
