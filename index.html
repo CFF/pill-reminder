@@ -643,7 +643,7 @@ function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchi
           <div style={{background:"var(--card)",borderRadius:16,overflow:"hidden",boxShadow:"var(--shadow-sm)"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>App</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Posology</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v75</span></div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v76</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Storage</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Supabase</span></div>
           </div>
@@ -965,7 +965,7 @@ function App(){
             return(<div style={{marginTop:28}}>
               <div ref={tipsRef} style={{marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                 <div className="serif" style={{fontSize:26,fontWeight:400,color:"var(--t1)",letterSpacing:"-0.01em",lineHeight:1.1}}>Recommendations</div>
-                {tipsLoading&&<div style={{display:"flex",alignItems:"center",gap:7}}><div style={{width:14,height:14,border:"2px solid var(--sep)",borderTopColor:"var(--acc)",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/><span style={{fontSize:12,color:"var(--t2)"}}>Updating…</span></div>}
+
               </div>
               {tipsLoading&&(
                 <div style={{background:"var(--card)",borderRadius:14,padding:"18px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:12,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
@@ -997,7 +997,7 @@ function App(){
       </div>
     </div>
 
-    {(hasNewTips||tipsLoading)&&(()=>{const ready=hasNewTips&&!tipsLoading;return(<button onClick={ready?()=>{tipsRef.current&&tipsRef.current.scrollIntoView({behavior:"smooth",block:"start"});setTimeout(()=>setHasNewTips(false),600);}:null} style={{position:"fixed",bottom:"calc(80px + env(safe-area-inset-bottom,0px))",left:"50%",transform:"translateX(-50%)",zIndex:490,background:ready?"var(--acc)":"var(--t3)",color:"#fff",border:"none",borderRadius:20,padding:"9px 18px",fontSize:13,fontWeight:600,boxShadow:ready?"0 4px 16px rgba(200,121,65,0.35)":"none",cursor:ready?"pointer":"default",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",opacity:ready?1:0.45,transition:"opacity 0.3s,background 0.3s"}}>↓ New recommendations</button>);})()}
+    {(hasNewTips||tipsLoading)&&(()=>{const ready=hasNewTips&&!tipsLoading;return(<button onClick={ready?()=>{tipsRef.current&&tipsRef.current.scrollIntoView({behavior:"smooth",block:"start"});setTimeout(()=>setHasNewTips(false),600);}:null} style={{position:"fixed",bottom:"calc(80px + env(safe-area-inset-bottom,0px))",left:"50%",transform:"translateX(-50%)",zIndex:490,background:ready?"var(--acc)":"var(--t3)",color:"#fff",border:"none",borderRadius:20,padding:"9px 18px",fontSize:13,fontWeight:600,boxShadow:ready?"0 4px 16px rgba(200,121,65,0.35)":"0 4px 16px rgba(0,0,0,0.2)",cursor:ready?"pointer":"default",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",transition:"background 0.3s"}}>{ready?<span>↓</span>:<div style={{width:13,height:13,border:"2px solid rgba(255,255,255,0.4)",borderTopColor:"#fff",borderRadius:"50%",animation:"spin 0.8s linear infinite",flexShrink:0}}/>}<span>New recommendations</span></button>);})()}
     <TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={hasNewTips}/>
 
     {addSheet&&(<BottomSheet onClose={()=>setAddSheet(null)}>
@@ -1097,7 +1097,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 <script>
 if("serviceWorker"in navigator){
-  const sw='const C="pr-v75",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
+  const sw='const C="pr-v76",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
