@@ -643,7 +643,7 @@ function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchi
           <div style={{background:"var(--card)",borderRadius:16,overflow:"hidden",boxShadow:"var(--shadow-sm)"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>App</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Posology</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v78</span></div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v79</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Storage</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Supabase</span></div>
           </div>
@@ -656,13 +656,21 @@ function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchi
 
 // ── No-token screen ───────────────────────────────────────────────
 function NoTokenView(){
+  const [val,setVal]=React.useState("");
+  function go(){
+    const t=val.trim();
+    if(!t)return;
+    window.location.href=window.location.pathname+"?u="+encodeURIComponent(t);
+  }
   return(<div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center",padding:32}}>
-    <div style={{background:"var(--card)",borderRadius:20,padding:28,boxShadow:"var(--shadow-lg)",textAlign:"center",maxWidth:340}}>
+    <div style={{background:"var(--card)",borderRadius:20,padding:28,boxShadow:"var(--shadow-lg)",textAlign:"center",maxWidth:340,width:"100%"}}>
       <div style={{width:56,height:56,borderRadius:16,background:"var(--acc-soft)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",color:"var(--acc)"}}>
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
       </div>
       <div style={{fontSize:20,fontWeight:700,color:"var(--t1)",marginBottom:8}}>Access required</div>
-      <div style={{fontSize:15,color:"var(--t2)",lineHeight:1.6}}>Open the link you received to access your Pill Reminder. The link looks like:<br/><br/><span style={{fontFamily:"monospace",fontSize:13,color:"var(--acc)"}}>pill-reminder/?u=yourtoken</span></div>
+      <div style={{fontSize:14,color:"var(--t2)",lineHeight:1.6,marginBottom:20}}>Enter your access token to continue.</div>
+      <input value={val} onChange={e=>setVal(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()} placeholder="Your token" style={{width:"100%",boxSizing:"border-box",padding:"12px 14px",borderRadius:12,border:"1.5px solid var(--sep-strong)",background:"var(--bg)",color:"var(--t1)",fontSize:16,outline:"none",marginBottom:12,fontFamily:"inherit"}}/>
+      <button onClick={go} style={{width:"100%",padding:"13px",borderRadius:12,background:"var(--acc)",color:"#fff",fontSize:16,fontWeight:600,border:"none",cursor:"pointer"}}>Continue</button>
     </div>
   </div>);
 }
@@ -1097,7 +1105,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 <script>
 if("serviceWorker"in navigator){
-  const sw='const C="pr-v78",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
+  const sw='const C="pr-v79",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
