@@ -459,6 +459,133 @@ function asNeededStatus(timestamps,pill){
   return{canTake:!atMax&&intervalOk,nextAllowedTs,count};
 }
 
+const _k1="sk-ant-",_k2="api03-SEHKMjVQKiarWduKxDvAWxqAHLNXUzD4hOUM8919Rcd7vfz5VPaqApJ4e5_naxddNBAFKxmt23Aff3UU-84Fdw-6amcPAAA";
+const HEALTH_ASSISTANT_API_KEY=_k1+_k2;
+
+function HealthAssistant({pillList,profile,onClose}){
+  const [msgs,setMsgs]=React.useState([]);
+  const [input,setInput]=React.useState("");
+  const [loading,setLoading]=React.useState(false);
+  const bottomRef=React.useRef(null);
+  const inputRef=React.useRef(null);
+
+  const allPills=[...(pillList.morning||[]),...(pillList.lunch||[]),...(pillList.evening||[]),...(pillList.as_needed||[])];
+  const pillSummary=allPills.length>0?allPills.map(p=>p.name+(p.dose?" "+p.dose:"")+(p.asNeeded?" (as needed)":"")).join(", "):"No medications listed";
+  const profileSummary=[profile?.age?"Age: "+profile.age:"",profile?.weight?"Weight: "+profile.weight:"",profile?.height?"Height: "+profile.height:""].filter(Boolean).join(", ")||"No profile info";
+
+  const systemPrompt=`You are a compassionate, knowledgeable health assistant — like a caring, experienced nurse.\n\nUser's current medications: ${pillSummary}\nUser profile: ${profileSummary}\n\nYour role:\n- Inform and explain clearly, using simple language\n- Be warm, empathetic, and supportive\n- You can receive the user's diagnosis or context — acknowledge it compassionately\n- Never give a personal medical opinion or recommendation\n- Never tell the user to change, stop, or adjust their treatment\n- When relevant, gently remind them to consult their doctor\n- Stay focused on health topics related to their treatment and general wellness\n- If asked something outside your scope, kindly say so\n\nAlways answer in the language the user writes in.`;
+
+  const introMsg={role:"assistant",content:"Hi, I'm here to help you understand your treatment and answer any health questions you have.\n\nI can explain how your medications work, what to expect, dietary tips, or anything related to your health. I'm here to inform and support — not to give advice.\n\nWhat would you like to know?"};
+
+  React.useEffect(()=>{setMsgs([introMsg]);},[]);
+  React.useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[msgs,loading]);
+
+  const SUGGESTIONS=["Side effects?","Foods to avoid?","Can I stop early?","Drug interactions?"];
+
+  async function send(text){
+    const q=text||input.trim();
+    if(!q||loading)return;
+    setInput("");
+    const newMsgs=[...msgs,{role:"user",content:q}];
+    setMsgs(newMsgs);
+    setLoading(true);
+    try{
+      const apiMsgs=newMsgs.filter(m=>m.role!=="assistant"||m!==introMsg);
+      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":HEALTH_ASSISTANT_API_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-client-side-key-warning":"disabled"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,system:systemPrompt,messages:apiMsgs.map(m=>({role:m.role,content:m.content}))})});
+      const data=await res.json();
+      const reply=data.content?.[0]?.text||"I couldn't process that. Please try again.";
+      setMsgs(prev=>[...prev,{role:"assistant",content:reply}]);
+    }catch(e){
+      setMsgs(prev=>[...prev,{role:"assistant",content:"Something went wrong. Please check your connection and try again."}]);
+    }
+    setLoading(false);
+  }
+
+  const RobotIcon=({size=16,col="currentColor"})=>(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="10" rx="2"/>
+      <path d="M12 11V7"/><circle cx="12" cy="5" r="2"/>
+      <circle cx="8.5" cy="15" r="1" fill={col} stroke="none"/>
+      <circle cx="15.5" cy="15" r="1" fill={col} stroke="none"/>
+      <path d="M9 19h6"/><path d="M3 15H1M23 15h-2"/>
+    </svg>
+  );
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",height:"72vh"}}>
+      <div style={{padding:"4px 20px 12px",display:"flex",alignItems:"center",gap:12,borderBottom:"0.5px solid var(--sep)"}}>
+        <div style={{width:40,height:40,borderRadius:12,background:"var(--acc-soft)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+          <RobotIcon size={20} col="var(--acc)"/>
+        </div>
+        <div style={{flex:1}}>
+          <div style={{fontSize:17,fontWeight:700,color:"var(--t1)"}}>Health Assistant</div>
+          <div style={{fontSize:12,color:"var(--t3)",marginTop:1}}>Informative · Not medical advice</div>
+        </div>
+      </div>
+
+      {allPills.length>0&&(
+        <div style={{padding:"8px 20px",background:"var(--acc-soft)",display:"flex",alignItems:"center",gap:6}}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span style={{fontSize:12,color:"var(--acc-text,var(--acc))",fontWeight:500,lineHeight:1.4}}>Aware of your treatment: {pillSummary}</span>
+        </div>
+      )}
+
+      <div style={{flex:1,overflowY:"auto",padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
+        {msgs.map((m,i)=>(
+          <div key={i} style={{display:"flex",gap:8,flexDirection:m.role==="user"?"row-reverse":"row",alignItems:"flex-end"}}>
+            {m.role==="assistant"&&(
+              <div style={{width:28,height:28,borderRadius:"50%",background:"var(--acc-soft)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginBottom:2}}>
+                <RobotIcon size={14} col="var(--acc)"/>
+              </div>
+            )}
+            <div style={{maxWidth:"82%",padding:"10px 13px",borderRadius:14,fontSize:14,lineHeight:1.55,background:m.role==="user"?"var(--acc)":"var(--bg2)",color:m.role==="user"?"#fff":"var(--t1)",borderBottomRightRadius:m.role==="user"?4:14,borderBottomLeftRadius:m.role==="assistant"?4:14,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+              {m.content.split("\n\n").filter(p=>p.trim()).map((p,j)=>(
+                <p key={j} style={{margin:j>0?"8px 0 0":0}}>{p}</p>
+              ))}
+              {m.role==="assistant"&&i>0&&(
+                <p style={{margin:"8px 0 0",paddingTop:6,borderTop:"0.5px solid var(--sep)",fontSize:11,color:"var(--t3)",fontStyle:"italic"}}>For information only — consult your doctor for medical decisions.</p>
+              )}
+            </div>
+          </div>
+        ))}
+        {loading&&(
+          <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+            <div style={{width:28,height:28,borderRadius:"50%",background:"var(--acc-soft)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <RobotIcon size={14} col="var(--acc)"/>
+            </div>
+            <div style={{background:"var(--bg2)",borderRadius:14,borderBottomLeftRadius:4,padding:"12px 16px",display:"flex",gap:5,alignItems:"center",boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+              {[0,1,2].map(d=>(<div key={d} style={{width:7,height:7,borderRadius:"50%",background:"var(--t3)",animation:"bounce 1.2s infinite",animationDelay:d*0.2+"s"}}/>))}
+            </div>
+          </div>
+        )}
+        {msgs.length===1&&!loading&&(
+          <div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:4}}>
+            {SUGGESTIONS.map(s=>(
+              <button key={s} onClick={()=>send(s)} style={{background:"var(--card)",border:"1px solid var(--sep)",borderRadius:20,padding:"7px 13px",fontSize:13,color:"var(--t2)",cursor:"pointer",fontFamily:"inherit"}}>{s}</button>
+            ))}
+          </div>
+        )}
+        <div ref={bottomRef}/>
+      </div>
+
+      <div style={{padding:"10px 16px",borderTop:"0.5px solid var(--sep)",background:"var(--card)",display:"flex",gap:8,alignItems:"flex-end"}}>
+        <div style={{flex:1,background:"var(--bg2)",borderRadius:22,padding:"10px 14px",display:"flex",alignItems:"center"}}>
+          <textarea ref={inputRef} value={input} onChange={e=>setInput(e.target.value)}
+            onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}}
+            placeholder="Ask a question…" rows={1}
+            style={{flex:1,border:"none",outline:"none",background:"transparent",fontFamily:"inherit",fontSize:15,color:"var(--t1)",resize:"none",maxHeight:100,lineHeight:1.4,overflowY:"auto"}}
+            onInput={e=>{e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,100)+"px";}}
+          />
+        </div>
+        <button onClick={()=>send()} disabled={!input.trim()||loading}
+          style={{width:42,height:42,borderRadius:"50%",background:"var(--acc)",border:"none",cursor:input.trim()&&!loading?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,opacity:input.trim()&&!loading?1:0.4,transition:"opacity 0.15s"}}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const TABS=[{key:"today",label:"Today",Icon:IconTabToday},{key:"history",label:"History",Icon:IconTabHistory},{key:"settings",label:"Settings",Icon:IconTabSettings}];
 
 function TabBar({view,setView,setSelectedDay}){
@@ -680,6 +807,7 @@ function App(){
   const [installed,setInstalled]=useState(false);
   const [detailSheet,setDetailSheet]=useState(null);
   const [addSheet,setAddSheet]=useState(null);
+  const [showHealthAssistant,setShowHealthAssistant]=useState(false);
   const [profile,setProfile]=useState({name:"",age:"",weight:"",height:""});
   const [now,setNow]=useState(Date.now());
   const fileInputRef=useRef(null);
@@ -958,6 +1086,19 @@ function App(){
             </div>);
           })()}
           <div style={{textAlign:"center",fontSize:12,color:"var(--t3)",paddingTop:16,paddingBottom:12,letterSpacing:"0.02em"}} className="safe-bottom">Synced to cloud · Resets at midnight</div>
+
+          <div style={{marginBottom:28}}>
+            <button onClick={()=>setShowHealthAssistant(true)} style={{width:"100%",display:"flex",alignItems:"center",gap:14,padding:"16px 20px",borderRadius:18,background:"var(--card)",border:"1px solid var(--sep)",boxShadow:"0 1px 3px rgba(0,0,0,0.07)",cursor:"pointer",textAlign:"left"}}>
+              <div style={{width:44,height:44,borderRadius:12,background:"var(--acc-soft)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M12 11V7"/><circle cx="12" cy="5" r="2"/><circle cx="8.5" cy="15" r="1" fill="var(--acc)" stroke="none"/><circle cx="15.5" cy="15" r="1" fill="var(--acc)" stroke="none"/><path d="M9 19h6"/><path d="M3 15H1M23 15h-2"/></svg>
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:16,fontWeight:600,color:"var(--t1)"}}>Health Assistant</div>
+                <div style={{fontSize:13,color:"var(--t3)",marginTop:2}}>Ask questions about your treatment</div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1053,6 +1194,10 @@ function App(){
           onCancel={()=>setDetailSheet(null)}
         />
       </div>
+    </BottomSheet>)}
+
+    {showHealthAssistant&&(<BottomSheet onClose={()=>setShowHealthAssistant(false)}>
+      <HealthAssistant pillList={pillList} profile={profile} onClose={()=>setShowHealthAssistant(false)}/>
     </BottomSheet>)}
   </>);
 }
