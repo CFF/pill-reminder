@@ -461,11 +461,14 @@ function asNeededStatus(timestamps,pill){
 
 const TABS=[{key:"today",label:"Today",Icon:IconTabToday},{key:"history",label:"History",Icon:IconTabHistory},{key:"settings",label:"Settings",Icon:IconTabSettings}];
 
-function TabBar({view,setView,setSelectedDay}){
+function TabBar({view,setView,setSelectedDay,hasNewTips}){
   return(<div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:500,background:"var(--card)",borderTop:"0.5px solid var(--sep)",display:"flex",paddingBottom:"env(safe-area-inset-bottom,16px)",boxShadow:"0 -1px 12px rgba(0,0,0,0.07)"}}>
     {TABS.map(({key,label,Icon})=>{const active=view===key;return(
       <button key={key} onClick={()=>{setView(key);setSelectedDay(null);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,padding:"10px 0 6px",background:"transparent",border:"none",cursor:"pointer",color:active?"var(--acc)":"var(--t3)",transition:"color 0.15s"}}>
-        <Icon active={active}/>
+        <div style={{position:"relative",display:"inline-flex"}}>
+          <Icon active={active}/>
+          {key==="today"&&hasNewTips&&<div style={{position:"absolute",top:-1,right:-4,width:7,height:7,borderRadius:"50%",background:"var(--acc)",border:"1.5px solid var(--card)"}}/>}
+        </div>
         <span style={{fontSize:11,fontWeight:active?700:500,letterSpacing:"0.04em",textTransform:"uppercase"}}>{label}</span>
       </button>
     );})}
@@ -640,7 +643,7 @@ function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchi
           <div style={{background:"var(--card)",borderRadius:16,overflow:"hidden",boxShadow:"var(--shadow-sm)"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>App</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Posology</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v70</span></div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v71</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Storage</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Supabase</span></div>
           </div>
@@ -674,6 +677,15 @@ function App(){
   const [flash,setFlash]=useState(null);
   const [aiTips,setAiTips]=useState(null);
   const [tipsLoading,setTipsLoading]=useState(false);
+  const [hasNewTips,setHasNewTips]=useState(false);
+  const tipsRef=React.useRef(null);
+  React.useEffect(()=>{
+    if(!hasNewTips||!tipsRef.current)return;
+    if(typeof IntersectionObserver==="undefined")return;
+    const obs=new IntersectionObserver(([e])=>{if(e.isIntersecting){setHasNewTips(false);obs.disconnect();}},{threshold:0.3});
+    obs.observe(tipsRef.current);
+    return()=>obs.disconnect();
+  },[hasNewTips]);
   const [loading,setLoading]=useState(true);
   const [selectedDay,setSelectedDay]=useState(null);
   const [installPrompt,setInstallPrompt]=useState(null);
@@ -765,6 +777,7 @@ function App(){
       const tips=await res.json();
       if(Array.isArray(tips)){
         setAiTips(tips);
+        setHasNewTips(true);
         await sbSet(hashKey,tips);
       }
     }catch(e){console.error("Tips error",e);setAiTips([]);}
@@ -823,8 +836,8 @@ function App(){
 
   if(loading)return(<div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:"var(--t2)",fontSize:14}}>Loading…</div></div>);
   if(!USER_TOKEN)return <NoTokenView/>;
-  if(view==="history")return(<><HistoryView view={view} setView={setView} selectedDay={selectedDay} setSelectedDay={setSelectedDay} history={history} setHistory={setHistory} pillList={pillList} archived={archived} sessions={sessions} toggleHistoryTaken={toggleHistoryTaken}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay}/></>);
-  if(view==="settings")return(<><SettingsView view={view} setView={setView} setSelectedDay={setSelectedDay} profile={profile} setProfile={setProfile} pillList={pillList} archived={archived} setPillList={setPillList} setArchived={setArchived} fileInputRef={fileInputRef}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay}/></>);
+  if(view==="history")return(<><HistoryView view={view} setView={setView} selectedDay={selectedDay} setSelectedDay={setSelectedDay} history={history} setHistory={setHistory} pillList={pillList} archived={archived} sessions={sessions} toggleHistoryTaken={toggleHistoryTaken}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={false}/></>);
+  if(view==="settings")return(<><SettingsView view={view} setView={setView} setSelectedDay={setSelectedDay} profile={profile} setProfile={setProfile} pillList={pillList} archived={archived} setPillList={setPillList} setArchived={setArchived} fileInputRef={fileInputRef}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={false}/></>);
 
   const total=sessions.reduce((s,{key})=>s+getPillsForSession(pillList,key).length,0);
   const taken=sessions.reduce((s,{key})=>{const p=getPillsForSession(pillList,key),l=todayLog[key]||{};return s+p.filter(x=>l[x.id]).length;},0);
@@ -943,7 +956,7 @@ function App(){
           {(()=>{
             const colorMap={orange:"var(--acc)",blue:"var(--blue)",green:"var(--green)",red:"var(--red)",purple:"var(--violet)"};
             return(<div style={{marginTop:28}}>
-              <div style={{marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div ref={tipsRef} style={{marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                 <div className="serif" style={{fontSize:26,fontWeight:400,color:"var(--t1)",letterSpacing:"-0.01em",lineHeight:1.1}}>Recommendations</div>
                 {tipsLoading&&<div style={{width:14,height:14,border:"2px solid var(--sep)",borderTopColor:"var(--acc)",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>}
               </div>
@@ -971,7 +984,8 @@ function App(){
       </div>
     </div>
 
-    <TabBar view={view} setView={setView} setSelectedDay={setSelectedDay}/>
+    {hasNewTips&&!tipsLoading&&<button onClick={()=>{tipsRef.current&&tipsRef.current.scrollIntoView({behavior:"smooth",block:"start"});}} style={{position:"fixed",bottom:"calc(80px + env(safe-area-inset-bottom,0px))",left:"50%",transform:"translateX(-50%)",zIndex:490,background:"var(--acc)",color:"#fff",border:"none",borderRadius:20,padding:"9px 18px",fontSize:13,fontWeight:600,boxShadow:"0 4px 16px rgba(200,121,65,0.35)",cursor:"pointer",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"}}>↓ New recommendations</button>}
+    <TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={hasNewTips}/>
 
     {addSheet&&(<BottomSheet onClose={()=>setAddSheet(null)}>
       <div style={{padding:"4px 20px 12px"}}><div style={{fontSize:18,fontWeight:700,color:"var(--t1)"}}>Add medication</div></div>
@@ -1070,7 +1084,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 <script>
 if("serviceWorker"in navigator){
-  const sw='const C="pr-v70",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
+  const sw='const C="pr-v71",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
