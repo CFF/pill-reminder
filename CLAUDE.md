@@ -53,6 +53,20 @@ Claire works entirely on iPhone. Changes discussed with Claude, then Claude down
 
 **SW versioning rule:** bump `pr-vNN` on every meaningful commit — both the SW cache constant (bottom of file) and the version string shown in Settings.
 
+**JSX validation rule (mandatory before every commit):** After every patch, run a Babel parse check before committing. A missing `</div>` or malformed JSX causes a blank page with no useful error. Run this in bash_tool before every commit:
+
+```bash
+node -e "
+const fs = require('fs');
+const src = fs.readFileSync('index.html', 'utf8');
+const match = src.match(/<script type=\\\"text\\/babel\\\">([\\s\\S]*?)<\\/script>/);
+require('@babel/parser').parse(match[1], { plugins: ['jsx'] });
+console.log('JSX OK');
+"
+```
+
+If the parse fails, fix before showing preview. Never commit unvalidated JSX.
+
 ## Architecture
 
 - Single `App` component holds all state
