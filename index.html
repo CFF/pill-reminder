@@ -651,7 +651,7 @@ function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchi
           <div style={{background:"var(--card)",borderRadius:16,overflow:"hidden",boxShadow:"var(--shadow-sm)"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>App</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Posology</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v84</span></div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v85</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Storage</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Supabase</span></div>
           </div>
@@ -827,7 +827,7 @@ function App(){
     const hashKey="pr:tips:"+btoa(unescape(encodeURIComponent(pillsDesc))).slice(0,40);
     try{
       const cached=await sbGet(hashKey);
-      if(cached&&Array.isArray(cached)){setAiTips(cached);const seenRaw=JSON.parse(localStorage.getItem("pr:seenTipLabels")||"[]");const newLabels=cached.map(t=>t.label).filter(l=>!seenRaw.includes(l));if(newLabels.length>0){setNewTipLabels(new Set(newLabels));setHasNewTips(true);}else{setHasNewTips(false);}setTipsLoading(false);return;}
+      if(cached&&Array.isArray(cached)){const activeNames=allPills.map(p=>p.name.toLowerCase());const filtered=cached.filter(t=>t.label.toLowerCase()==="interactions"||activeNames.some(n=>t.label.toLowerCase().includes(n)||n.includes(t.label.toLowerCase())));if(filtered.length!==cached.length){await sbSet(hashKey,filtered);}setAiTips(filtered);const seenRaw=JSON.parse(localStorage.getItem("pr:seenTipLabels")||"[]");const newLabels=filtered.map(t=>t.label).filter(l=>!seenRaw.includes(l));if(newLabels.length>0){setNewTipLabels(new Set(newLabels));setHasNewTips(true);}else{setHasNewTips(false);}setTipsLoading(false);return;}
     }catch{}
     setTipsLoading(true);
     try{
@@ -1040,7 +1040,6 @@ function App(){
                 return(
                 <div key={ti} ref={el=>{if(el)tipCardRefs.current[tip.label]=el;else delete tipCardRefs.current[tip.label];}} style={{background:"var(--card)",borderRadius:14,overflow:"hidden",marginBottom:12,boxShadow:isNew?"0 1px 8px rgba(0,102,232,0.15)":"0 1px 3px rgba(0,0,0,0.07)",transition:"box-shadow 0.3s"}}>
                   <div style={{display:"flex",alignItems:"center",gap:10,padding:"13px 16px",borderBottom:"0.5px solid var(--sep-strong)"}}>
-                    <div style={{width:8,height:8,borderRadius:"50%",background:isNew?"var(--blue)":"var(--t2)",flexShrink:0}}/>
                     <span style={{fontSize:15,fontWeight:600,color:"var(--t1)",flex:1}}>{tip.label}</span>
                     {isNew&&<span style={{fontSize:11,fontWeight:700,color:"var(--blue)",background:"rgba(0,102,232,0.1)",borderRadius:6,padding:"2px 7px",letterSpacing:"0.04em",textTransform:"uppercase"}}>New</span>}
                   </div>
@@ -1155,7 +1154,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 <script>
 if("serviceWorker"in navigator){
-  const sw='const C="pr-v84",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
+  const sw='const C="pr-v85",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
