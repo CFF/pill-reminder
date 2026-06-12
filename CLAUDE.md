@@ -62,6 +62,16 @@ Claire works on iPhone (and occasionally Mac). Changes discussed with Claude, th
 
 **Preview rule:** always show a diff or rendered preview and wait for explicit approval before committing.
 
+## CRITICAL: Dev before prod
+
+**Never commit directly to `cff/pill-reminder` (prod).** All changes go to `cff/pill-reminder-dev` first.
+
+- Dev repo: `cff/pill-reminder-dev` → https://cff.github.io/pill-reminder-dev/
+- Prod repo: `cff/pill-reminder` → https://cff.github.io/pill-reminder/
+- Features are tested on dev, then applied surgically to prod only after explicit approval
+- Never overwrite prod with a full copy of dev — surgical patches only
+- Dev and prod have independent version strings (dev is ahead)
+
 ## Architecture
 
 - Single `App` component holds all state
