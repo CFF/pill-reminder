@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-title" content="Posology"/>
   <title>Posology</title>
   <script>
-    const manifestData={name:"Posology",short_name:"Posology",start_url:"./",display:"standalone",background_color:"#1a1410",theme_color:"#1a1410",orientation:"portrait",icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='110' fill='%231a1410'/%3E%3Cg transform='translate(256%2C256) rotate(-66)'%3E%3CclipPath id='p'%3E%3Crect x='-130' y='-44' width='260' height='88' rx='44'/%3E%3C/clipPath%3E%3Crect x='-130' y='-44' width='130' height='88' fill='%23faf7f2' clip-path='url(%23p)'/%3E%3Crect x='-130' y='-44' width='260' height='88' rx='44' stroke='%23faf7f2' stroke-width='18' fill='none'/%3E%3Cline x1='0' y1='-44' x2='0' y2='44' stroke='%231a1410' stroke-width='14'/%3E%3C/g%3E%3C/svg%3E",sizes:"any",type:"image/svg+xml",purpose:"any maskable"}]};
+    const manifestData={name:"Posology",short_name:"Posology",start_url:"./",display:"standalone",background_color:"#1a1410",theme_color:"#1a1410",orientation:"portrait",icons:[{src:"data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20512%20512'%3E%3Crect%20width%3D'512'%20height%3D'512'%20rx%3D'112'%20fill%3D'%231a1a1a'%2F%3E%3Cg%20transform%3D'translate%28256%2C256%29%20rotate%28-45%29'%3E%3Crect%20x%3D'-140'%20y%3D'-44'%20width%3D'280'%20height%3D'88'%20rx%3D'44'%20fill%3D'none'%20stroke%3D'%23e8956a'%20stroke-width%3D'18'%2F%3E%3C%2Fg%3E%3Cg%20transform%3D'translate%28256%2C256%29%20rotate%2845%29'%3E%3Crect%20x%3D'-140'%20y%3D'-44'%20width%3D'280'%20height%3D'88'%20rx%3D'44'%20fill%3D'%231a1a1a'%20stroke%3D'none'%2F%3E%3C%2Fg%3E%3Cg%20transform%3D'translate%28256%2C256%29%20rotate%2845%29'%3E%3Crect%20x%3D'-140'%20y%3D'-44'%20width%3D'280'%20height%3D'88'%20rx%3D'44'%20fill%3D'none'%20stroke%3D'%23c87941'%20stroke-width%3D'18'%2F%3E%3Cline%20x1%3D'0'%20y1%3D'-44'%20x2%3D'0'%20y2%3D'44'%20stroke%3D'%23c87941'%20stroke-width%3D'18'%20stroke-linecap%3D'round'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E",sizes:"any",type:"image/svg+xml",purpose:"any maskable"}]};
     const bl=new Blob([JSON.stringify(manifestData)],{type:"application/manifest+json"});
     const ml=document.createElement("link");ml.rel="manifest";ml.href=URL.createObjectURL(bl);document.head.appendChild(ml);
   </script>
@@ -90,25 +90,93 @@ function resolveToken(){
 }
 const USER_TOKEN=resolveToken();
 
+// ── Offline sync queue ───────────────────────────────────────────
+const SYNC_QUEUE_KEY = 'pr:syncqueue';
+function lsGet(key){ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):null; }catch(e){ return null; } }
+function lsSet(key,value){ try{ localStorage.setItem(key,JSON.stringify(value)); }catch(e){} }
+function cacheWrite(key,value){ lsSet('pr:cache:'+key,{v:value,ts:Date.now()}); }
+function cacheRead(key){ const d=lsGet('pr:cache:'+key); return d?d.v:null; }
+function queueWrite(key,value){
+  const q=lsGet(SYNC_QUEUE_KEY)||[];
+  const idx=q.findIndex(e=>e.key===key);
+  if(idx!==-1)q.splice(idx,1);
+  q.push({key,value,ts:Date.now()});
+  lsSet(SYNC_QUEUE_KEY,q);
+}
+async function flushSyncQueue(){
+  const q=lsGet(SYNC_QUEUE_KEY)||[];
+  if(!q.length)return;
+  const failed=[];
+  for(const entry of q){
+    try{
+      await sbSetRemote(entry.key,entry.value);
+    }catch(e){
+      failed.push(entry);
+    }
+  }
+  lsSet(SYNC_QUEUE_KEY,failed);
+}
+
 // ── Supabase KV helpers ──────────────────────────────────────────
 async function sbGet(key){
   if(!USER_TOKEN)return null;
-  const res=await fetch(`${SUPA_URL}/rest/v1/data?user_token=eq.${encodeURIComponent(USER_TOKEN)}&key=eq.${encodeURIComponent(key)}&select=value`,{headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
-  if(!res.ok)return null;
-  const rows=await res.json();
-  return rows.length?rows[0].value:null;
+  if(!navigator.onLine){
+    return cacheRead(key);
+  }
+  try{
+    const res=await fetch(`${SUPA_URL}/rest/v1/data?user_token=eq.${encodeURIComponent(USER_TOKEN)}&key=eq.${encodeURIComponent(key)}&select=value`,{headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+    if(!res.ok)return cacheRead(key);
+    const rows=await res.json();
+    const value=rows.length?rows[0].value:null;
+    if(value!==null)cacheWrite(key,value);
+    return value;
+  }catch(e){
+    return cacheRead(key);
+  }
+}
+async function sbSetRemote(key,value){
+  await fetch(`${SUPA_URL}/rest/v1/data`,{method:"POST",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({user_token:USER_TOKEN,key,value,updated_at:new Date().toISOString()})});
 }
 async function sbSet(key,value){
   if(!USER_TOKEN)return;
-  await fetch(`${SUPA_URL}/rest/v1/data`,{method:"POST",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({user_token:USER_TOKEN,key,value,updated_at:new Date().toISOString()})});
+  cacheWrite(key,value);
+  if(!navigator.onLine){
+    queueWrite(key,value);
+    return;
+  }
+  try{
+    await sbSetRemote(key,value);
+    const q=lsGet(SYNC_QUEUE_KEY)||[];
+    const filtered=q.filter(e=>e.key!==key);
+    lsSet(SYNC_QUEUE_KEY,filtered);
+  }catch(e){
+    queueWrite(key,value);
+  }
 }
 async function sbGetAllDayKeys(prefix){
   if(!USER_TOKEN)return[];
-  const res=await fetch(`${SUPA_URL}/rest/v1/data?user_token=eq.${encodeURIComponent(USER_TOKEN)}&key=like.${encodeURIComponent(prefix+'*')}&select=key,value&order=key.desc`,{headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
-  if(!res.ok)return[];
-  return await res.json();
+  if(!navigator.onLine){
+    const keys=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k&&k.startsWith('pr:cache:'+prefix)){
+        const realKey=k.replace('pr:cache:','');
+        const val=cacheRead(realKey);
+        if(val!==null)keys.push({key:realKey,value:val});
+      }
+    }
+    return keys.sort((a,b)=>b.key.localeCompare(a.key));
+  }
+  try{
+    const res=await fetch(`${SUPA_URL}/rest/v1/data?user_token=eq.${encodeURIComponent(USER_TOKEN)}&key=like.${encodeURIComponent(prefix+'*')}&select=key,value&order=key.desc`,{headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+    if(!res.ok)return[];
+    const rows=await res.json();
+    rows.forEach(r=>cacheWrite(r.key,r.value));
+    return rows;
+  }catch(e){
+    return[];
+  }
 }
-
 const PILL_LIST_KEY="pr:list",ARCHIVED_KEY="pr:archived",PROFILE_KEY="pr:profile";
 const dayKey=d=>`pr:day:${d}`;
 const asNeededDayKey=d=>`pr:asneeded:${d}`;
@@ -526,7 +594,7 @@ function HealthAssistant({pillList,profile,onClose,msgs,setMsgs}){
   });
 
   return(
-    <div style={{minHeight:"100vh",background:"var(--bg)",paddingBottom:"calc(165px + env(safe-area-inset-bottom,0px))"}} className="fade-up">
+    <div style={{minHeight:"100vh",background:"var(--bg)",paddingBottom:"calc(165px + env(safe-area-inset-bottom,0px))"}} className="fade-up scroll-view">
       <div style={{background:"var(--card)",borderRadius:"0 0 24px 24px",boxShadow:"var(--shadow-md)",marginBottom:6,paddingTop:"calc(env(safe-area-inset-top,20px) + 20px)",paddingBottom:18,paddingLeft:20,paddingRight:20,backgroundImage:"radial-gradient(ellipse at 110% -10%, var(--acc-glow) 0%, transparent 60%)"}}>
         <h1 className="serif" style={{fontSize:34,fontWeight:400,color:"var(--t1)",letterSpacing:"-0.01em",lineHeight:1.1,margin:0}}>Health Assistant</h1>
       </div>
@@ -633,7 +701,7 @@ function HistoryView({view,setView,selectedDay,setSelectedDay,history,setHistory
   const archiveByDate={};
   for(const ev of archiveEvents){if(!archiveByDate[ev.date])archiveByDate[ev.date]=[];archiveByDate[ev.date].push(ev);}
 
-  return(<div style={{minHeight:"100vh",background:"var(--bg)",paddingBottom:"calc(90px + env(safe-area-inset-bottom,0px))"}} className="fade-up">
+  return(<div style={{minHeight:"100vh",background:"var(--bg)",paddingBottom:"calc(90px + env(safe-area-inset-bottom,0px))"}} className="fade-up scroll-view">
     <div style={{maxWidth:480,margin:"0 auto"}}>
       <div style={{background:"var(--card)",borderRadius:"0 0 24px 24px",boxShadow:"var(--shadow-md)",marginBottom:6,paddingTop:"calc(env(safe-area-inset-top,20px) + 20px)",paddingBottom:18,paddingLeft:20,paddingRight:20,backgroundImage:"radial-gradient(ellipse at 110% -10%, var(--acc-glow) 0%, transparent 60%)"}}>
         {selectedDay?(()=>{const{weekday,date}=formatDayHeader(selectedDay);return(<>
@@ -729,7 +797,7 @@ function HistoryView({view,setView,selectedDay,setSelectedDay,history,setHistory
 }
 
 function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchived,fileInputRef}){
-  return(<div style={{minHeight:"100vh",background:"var(--bg)",paddingBottom:"calc(90px + env(safe-area-inset-bottom,0px))"}} className="fade-up">
+  return(<div style={{minHeight:"100vh",background:"var(--bg)",paddingBottom:"calc(90px + env(safe-area-inset-bottom,0px))"}} className="fade-up scroll-view">
     <div style={{maxWidth:480,margin:"0 auto"}}>
       <div style={{background:"var(--card)",borderRadius:"0 0 24px 24px",boxShadow:"var(--shadow-md)",marginBottom:6,paddingTop:"calc(env(safe-area-inset-top,20px) + 20px)",paddingBottom:18,paddingLeft:20,paddingRight:20}}>
         <h1 className="serif" style={{fontSize:34,fontWeight:400,color:"var(--t1)",letterSpacing:"-0.01em",lineHeight:1.05}}>Settings</h1>
@@ -787,7 +855,7 @@ function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchi
           <div style={{background:"var(--card)",borderRadius:16,overflow:"hidden",boxShadow:"var(--shadow-sm)"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>App</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Posology</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v112</span></div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v134</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Storage</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Supabase</span></div>
           </div>
@@ -831,6 +899,7 @@ function App(){
   const [tipsLoading,setTipsLoading]=useState(false);
   const [hasNewTips,setHasNewTips]=useState(false);
   const [nurseMsgs,setNurseMsgs]=useState([]);
+  const [isOnline,setIsOnline]=useState(navigator.onLine);
   const [newTipLabels,setNewTipLabels]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem("pr:newTipLabels")||"[]"));}catch{return new Set();}});
   const tipCardRefs=React.useRef({});
   const tipsRef=React.useRef(null);
@@ -942,6 +1011,11 @@ function App(){
   useEffect(()=>{
     if(!USER_TOKEN){setLoading(false);return;}
     loadData();
+    const goOnline=()=>{setIsOnline(true);flushSyncQueue();};
+    const goOffline=()=>setIsOnline(false);
+    window.addEventListener('online',goOnline);
+    window.addEventListener('offline',goOffline);
+    return()=>{window.removeEventListener('online',goOnline);window.removeEventListener('offline',goOffline);};
   },[]);
 
   function buildEmptyLog(list){
@@ -960,6 +1034,52 @@ function App(){
     setHistory(results.filter(r=>r.log!==null));
   },[]);
   useEffect(()=>{if(view==="history")loadHistory();},[view,loadHistory]);
+  const VIEWS=["today","history","nurse","settings"];
+  useEffect(()=>{
+    let startX=0,startY=0,locked=null;
+    function onStart(e){
+      if(e.touches[0].clientX<30)return;
+      startX=e.touches[0].clientX;
+      startY=e.touches[0].clientY;
+      locked=null;
+    }
+    function onMove(e){
+      if(!startX)return;
+      const dx=e.touches[0].clientX-startX;
+      const dy=e.touches[0].clientY-startY;
+      if(!locked){
+        if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>8)locked="x";
+        else if(Math.abs(dy)>8){locked="v";startX=0;return;}
+        else return;
+      }
+      if(locked==="x")e.preventDefault();
+    }
+    function onEnd(e){
+      if(!startX||locked!=="x")return;
+      const dx=e.changedTouches[0].clientX-startX;
+      startX=0;locked=null;
+      if(Math.abs(dx)<60)return;
+      document.querySelectorAll(".scroll-view").forEach(el=>{el.scrollTop=0;});
+      setView(cur=>{
+        const idx=VIEWS.indexOf(cur);
+        if(dx<0&&idx<VIEWS.length-1){
+          const next=VIEWS[idx+1];
+          if(next==="history")setSelectedDay(null);
+          return next;
+        }
+        if(dx>0&&idx>0)return VIEWS[idx-1];
+        return cur;
+      });
+    }
+    document.addEventListener("touchstart",onStart,{passive:true});
+    document.addEventListener("touchmove",onMove,{passive:false});
+    document.addEventListener("touchend",onEnd,{passive:true});
+    return()=>{
+      document.removeEventListener("touchstart",onStart);
+      document.removeEventListener("touchmove",onMove);
+      document.removeEventListener("touchend",onEnd);
+    };
+  },[]);
 
   async function toggleTaken(session,id){const newLog={...todayLog,[session]:{...todayLog[session],[id]:!todayLog[session][id]}};setTodayLog(newLog);await sbSet(dayKey(todayStr()),newLog);if(newLog[session][id]){setFlash(id);setTimeout(()=>setFlash(null),400);}}
   async function toggleHistoryTaken(date,session,id){const existing=await sbGet(dayKey(date))||{morning:{},lunch:{},evening:{}};const newLog={...existing,[session]:{...existing[session],[id]:!existing[session]?.[id]}};await sbSet(dayKey(date),newLog);setHistory(prev=>prev.map(h=>h.date===date?{...h,log:newLog}:h));}
@@ -1054,6 +1174,7 @@ function App(){
   </div>);
   if(loading)return(<div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:"var(--t2)",fontSize:14}}>Loading…</div></div>);
   if(!USER_TOKEN)return <NoTokenView/>;
+  if(!pillList)return(<div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:"var(--t2)",fontSize:14}}>Loading…</div></div>);
   if(view==="history")return(<><HistoryView view={view} setView={setView} selectedDay={selectedDay} setSelectedDay={setSelectedDay} history={history} setHistory={setHistory} pillList={pillList} archived={archived} sessions={sessions} toggleHistoryTaken={toggleHistoryTaken}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={false}/></>);
   if(view==="settings")return(<><SettingsView view={view} setView={setView} setSelectedDay={setSelectedDay} profile={profile} setProfile={setProfile} pillList={pillList} archived={archived} setPillList={setPillList} setArchived={setArchived} fileInputRef={fileInputRef}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={false}/></>);
   if(view==="nurse")return(<><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={false}/><HealthAssistant pillList={pillList} profile={profile} msgs={nurseMsgs} setMsgs={setNurseMsgs}/></>);
@@ -1063,8 +1184,9 @@ function App(){
   const pct=total?taken/total:0,R=33,C=2*Math.PI*R,ringCol=pct===1?"var(--green)":"var(--acc)";
 
   return(<>
-    <div style={{minHeight:"100vh",background:"var(--bg)",paddingBottom:"calc(90px + env(safe-area-inset-bottom,0px))"}} className="fade-up today-scroll">
+    <div style={{minHeight:"100vh",background:"var(--bg)",paddingBottom:"calc(90px + env(safe-area-inset-bottom,0px))"}} className="fade-up today-scroll scroll-view">
       <div style={{maxWidth:480,margin:"0 auto"}}>
+        {!isOnline&&<div style={{background:"#f59e0b",color:"#fff",fontSize:12,fontWeight:600,textAlign:"center",padding:"6px 16px",borderRadius:"0 0 12px 12px",letterSpacing:"0.04em",marginBottom:4}}>Hors ligne — modifications sauvegardées localement</div>}
         <div style={{background:"var(--card)",borderRadius:"0 0 24px 24px",boxShadow:"var(--shadow-md)",marginBottom:6,paddingTop:"calc(env(safe-area-inset-top,20px) + 20px)",paddingBottom:18,paddingLeft:20,paddingRight:20,backgroundImage:"radial-gradient(ellipse at 110% -10%, var(--acc-glow) 0%, transparent 60%)"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
             <div>
@@ -1335,6 +1457,8 @@ function App(){
         />
       </div>
     </BottomSheet>)}
+    <TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={hasNewTips}/>
+
   </>);
 }
 
@@ -1342,7 +1466,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 <script>
 if("serviceWorker"in navigator){
-  const sw='const C="pr-v112",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}if(e.request.mode==="navigate"){e.respondWith(fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;}).catch(()=>caches.match(e.request).then(r=>r||caches.match(self.location.pathname))));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
+  const sw='const C="pr-v134",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}if(e.request.mode==="navigate"){e.respondWith(fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;}).catch(()=>caches.match(e.request).then(r=>r||caches.match(self.location.pathname))));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
