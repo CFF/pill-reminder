@@ -177,7 +177,8 @@ async function sbGetAllDayKeys(prefix){
     return[];
   }
 }
-const PILL_LIST_KEY="pr:list",ARCHIVED_KEY="pr:archived",PROFILE_KEY="pr:profile";
+const PILL_LIST_KEY="pr:list",ARCHIVED_KEY="pr:archived",PROFILE_KEY="pr:profile",EVENTS_KEY="pr:events";
+
 const dayKey=d=>`pr:day:${d}`;
 const asNeededDayKey=d=>`pr:asneeded:${d}`;
 const startOfTodayTs=()=>{const d=new Date();d.setHours(0,0,0,0);return d.getTime();};
@@ -261,6 +262,9 @@ const IconPlus=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><
 const IconTrash=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><polyline points="3 6 5 6 21 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M9 6V4h6v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>;
 const IconBack=()=><svg width="10" height="18" viewBox="0 0 10 18" fill="none"><polyline points="9 1 1 9 9 17" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 const IconArchive=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="2" y="4" width="20" height="5" rx="1" stroke="currentColor" strokeWidth="2"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9" stroke="currentColor" strokeWidth="2"/><path d="M10 13h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>;
+const IconEventChange=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7,7 17,7 17,17"/></svg>;
+const IconEventStop=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>;
+const IconEventAdd=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>;
 const IconChevron=()=><svg width="7" height="13" viewBox="0 0 7 13" fill="none"><polyline points="1 1 6 6.5 1 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 const IconTabToday=({active})=><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="17" rx="3" stroke="currentColor" strokeWidth={active?"2":"1.7"} fill="none"/><line x1="3" y1="9" x2="21" y2="9" stroke="currentColor" strokeWidth={active?"2":"1.7"}/><line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" strokeWidth={active?"2":"1.7"} strokeLinecap="round"/><line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" strokeWidth={active?"2":"1.7"} strokeLinecap="round"/>{active&&<rect x="7" y="13" width="4" height="4" rx="1" fill="currentColor"/>}</svg>;
 const IconTabHistory=({active})=><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth={active?"2":"1.7"}/><polyline points="12 7 12 12 15.5 14.5" stroke="currentColor" strokeWidth={active?"2":"1.7"} strokeLinecap="round" strokeLinejoin="round"/></svg>;
@@ -327,9 +331,31 @@ function PillForm({initial,accent,onSave,onCancel,submitLabel="Add",defaultSessi
   const [quantity,setQuantity]=useState(initial?.quantity||parsed.qty||1);
   const [suggestions,setSuggestions]=useState([]);
   const [showSuggestions,setShowSuggestions]=useState(false);
+  const [scanLoading,setScanLoading]=useState(false);
   const searchTimer=useRef(null);
+  const imageInputRef=useRef(null);
   function handleNameChange(val){setName(val);setShowSuggestions(true);clearTimeout(searchTimer.current);if(val.length<2){setSuggestions([]);return;}searchTimer.current=setTimeout(async()=>{const res=await searchDrugs(val);setSuggestions(res);},300);}
   function pickSuggestion(s){setName(s.name);setSuggestions([]);setShowSuggestions(false);}
+  async function handleScanLabel(e){
+    const file=e.target.files?.[0];
+    if(!file)return;
+    setScanLoading(true);
+    try{
+      const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(",")[1]);r.onerror=rej;r.readAsDataURL(file);});
+      const fetchRes=await fetch("https://fotzkqkghxndjnomrspr.supabase.co/functions/v1/nurse-chat",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvdHprcWtnaHhuZGpub21yc3ByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MTg0MTMsImV4cCI6MjA5NjM5NDQxM30.o8AyVFlhd_g0NbdB1hd28x8ERxmCO4OjXPuwVoCJano"},body:JSON.stringify({system:"",messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:file.type,data:b64}},{type:"text",text:"This is a pharmacy label or medication packaging. Extract info and respond ONLY with valid JSON, no markdown, no explanation. Fields: name (string), dosageAmt (number or null), dosageUnit (string or null), quantity (number, default 1), session (one of morning/lunch/evening or null), timing (one of with_meal/before_meal/after_meal or null), durationDays (number or null), ongoing (boolean)"}]}]})});
+      const data=await fetchRes.json();
+      const text=data.content?.find(b=>b.type==="text")?.text||"";
+      const parsed=JSON.parse(text.replace(/```json|```/g,"").trim());
+      if(parsed.name)setName(parsed.name);
+      if(parsed.dosageAmt)setDosageAmt(Number(parsed.dosageAmt));
+      if(parsed.dosageUnit)setDosageUnit(parsed.dosageUnit);
+      if(parsed.quantity)setQuantity(Number(parsed.quantity));
+      if(parsed.session)setSchedules([{session:parsed.session,timing:parsed.timing||""}]);
+      if(parsed.durationDays){setDurationDays(Number(parsed.durationDays));setOngoing(false);}
+      else if(parsed.ongoing)setOngoing(true);
+    }catch(err){console.error("Scan error",err);alert("Scan failed — please fill in manually.");}
+    finally{setScanLoading(false);if(imageInputRef.current)imageInputRef.current.value="";}
+  }
   function handleSave(){
     if(!name.trim())return;
     const dose=quantity+" x "+dosageAmt+dosageUnit;
@@ -339,6 +365,10 @@ function PillForm({initial,accent,onSave,onCancel,submitLabel="Add",defaultSessi
   const stepBtn=(onClick,label)=>(<button onClick={onClick} style={{width:28,height:28,borderRadius:8,background:"var(--acc-soft)",border:"none",color:"var(--acc)",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>{label}</button>);
   return(
     <div style={{padding:"16px 16px 8px",background:"var(--card2)"}}>
+      <input ref={imageInputRef} type="file" accept="image/*" style={{display:"none"}} onChange={handleScanLabel}/>
+      <button onClick={()=>imageInputRef.current?.click()} disabled={scanLoading} style={{width:"100%",marginBottom:16,padding:"11px 14px",borderRadius:12,border:"none",background:"var(--acc-soft)",color:"var(--acc)",fontSize:15,fontWeight:600,cursor:scanLoading?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:scanLoading?0.6:1}}>
+        {scanLoading?"Analyse en cours…":"Scanner l'ordonnance"}
+      </button>
       <div style={{position:"relative",marginBottom:16}}>
         <input autoFocus={!noAutoFocus} placeholder="Medicine name" value={name}
           onChange={e=>handleNameChange(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleSave()}
@@ -498,7 +528,7 @@ async function archiveExpired(pillList){
 function buildActivePillsForDate(date,pillList,archived){
   const pills=[];
   for(const session of["morning","lunch","evening"]){
-    for(const pill of(pillList[session]||[])){if(!pill.durationDays||!pill.startDate){pills.push({...pill,session});}else{const end=addDays(pill.startDate,pill.durationDays);if(date>=pill.startDate&&date<end)pills.push({...pill,session});}}
+    for(const pill of(pillList[session]||[])){if(!pill.durationDays){if(!pill.startDate||date>=pill.startDate){pills.push({...pill,session});}}else{const end=addDays(pill.startDate,pill.durationDays);if(pill.startDate&&date>=pill.startDate&&date<end)pills.push({...pill,session});}}
     for(const pill of(archived[session]||[])){if(pill.startDate&&pill.endDate&&date>=pill.startDate&&date<pill.endDate)pills.push({...pill,session});}
   }
   return pills;
@@ -683,7 +713,7 @@ function TabBar({view,setView,setSelectedDay,hasNewTips}){
   </div>);
 }
 
-function HistoryView({view,setView,selectedDay,setSelectedDay,history,setHistory,pillList,archived,sessions,toggleHistoryTaken}){
+function HistoryView({view,setView,selectedDay,setSelectedDay,history,setHistory,pillList,archived,sessions,toggleHistoryTaken,storedEvents}){
   const [showingAll,setShowingAll]=useState(false);
   const [loadingMore,setLoadingMore]=useState(false);
 
@@ -696,10 +726,26 @@ function HistoryView({view,setView,selectedDay,setSelectedDay,history,setHistory
     setLoadingMore(false);
   }
 
-  const archiveEvents=[];
-  for(const session of["morning","lunch","evening"]){for(const pill of(archived[session]||[])){if(pill.endDate)archiveEvents.push({date:pill.endDate,pill,session});}}
-  const archiveByDate={};
-  for(const ev of archiveEvents){if(!archiveByDate[ev.date])archiveByDate[ev.date]=[];archiveByDate[ev.date].push(ev);}
+  // Build event map: stored events first (newest first), then synthetic from archived
+  // Stored events take priority — suppress synthetic if same pillId already covered
+  const eventsByDate={};
+  const coveredPillIds=new Set((storedEvents||[]).map(e=>e.pillId).filter(Boolean));
+  // Stored events first (already newest-first from pr:events)
+  for(const ev of(storedEvents||[])){
+    if(!eventsByDate[ev.date])eventsByDate[ev.date]=[];
+    eventsByDate[ev.date].push(ev);
+  }
+  // Synthetic from archived — only if not already covered by a stored event
+  for(const session of["morning","lunch","evening"]){
+    for(const pill of(archived[session]||[])){
+      if(!pill.endDate)continue;
+      if(coveredPillIds.has(pill.id))continue;
+      const type=pill.eventType||(pill.durationDays!=null?"expired":"stopped");
+      if(!eventsByDate[pill.endDate])eventsByDate[pill.endDate]=[];
+      eventsByDate[pill.endDate].push({type,pill,session});
+    }
+  }
+  const archiveByDate=eventsByDate;
 
   return(<div style={{minHeight:"100vh",background:"var(--bg)",paddingBottom:"calc(90px + env(safe-area-inset-bottom,0px))"}} className="fade-up scroll-view">
     <div style={{maxWidth:480,margin:"0 auto"}}>
@@ -746,16 +792,16 @@ function HistoryView({view,setView,selectedDay,setSelectedDay,history,setHistory
         })():(
           <>
           <GroupCard label="Log">
-            {history.length===0&&Object.keys(archiveByDate).length===0
+            {history.length===0&&Object.keys(eventsByDate).length===0
               ?<div style={{padding:"20px 18px",color:"var(--t3)",fontSize:15,fontStyle:"italic",textAlign:"center"}}>No history yet</div>
               :(()=>{
-                const allDates=[...new Set([...history.map(h=>h.date),...Object.keys(archiveByDate)])].sort((a,b)=>b.localeCompare(a));
+                const allDates=[...new Set([...history.map(h=>h.date),...Object.keys(eventsByDate)])].sort((a,b)=>b.localeCompare(a));
                 let rowIndex=0;
                 return allDates.map(date=>{
                   const histEntry=history.find(h=>h.date===date);
-                  const archEntries=archiveByDate[date]||[];
+                  const dayEvents=eventsByDate[date]||[];
                   const elements=[];
-                  archEntries.forEach(ev=>{const isFirst=rowIndex===0;rowIndex++;elements.push(<GroupRow key={"arch-"+ev.pill.id} first={isFirst}><div style={{display:"flex",alignItems:"center",gap:10,padding:"11px 16px"}}><span style={{color:"var(--t3)",display:"flex",flexShrink:0}}><IconArchive/></span><span style={{fontSize:13,color:"var(--t3)",fontStyle:"italic"}}><span style={{fontStyle:"normal",fontWeight:500,color:"var(--t2)"}}>{ev.pill.name}</span>{" "}finished on {formatFull(ev.pill.endDate)}</span></div></GroupRow>);});
+                  // Day row first
                   if(histEntry){
                     const{pct,taken:tk,total:tt}=dayScore(histEntry.log,pillList,archived,date);
                     const isToday=date===todayStr(),col=pct===100?"var(--green)":pct>=50?"var(--acc)":"var(--red)",C=2*Math.PI*13;
@@ -779,6 +825,41 @@ function HistoryView({view,setView,selectedDay,setSelectedDay,history,setHistory
                         <div style={{color:"var(--t3)",marginLeft:2}}><IconChevron/></div>
                       </div>
                     </GroupRow>);
+                  }
+                  // Events after day row
+                  dayEvents.forEach((ev,i)=>{
+                    const key=ev.type+"-"+(ev.pillId||ev.pill?.id||i)+"-"+date;
+                    const isFirst=rowIndex===0;rowIndex++;
+                    const pillName=ev.pillName||ev.pill?.name||"";
+                    const dose=ev.dose||ev.pill?.dose||"";
+                    const sess=ev.session?ev.session.charAt(0).toUpperCase()+ev.session.slice(1):"";
+                    let Icon,evText;
+                    if(ev.type==="expired"){
+                      Icon=IconArchive;
+                      evText=<><span style={{fontStyle:"normal",fontWeight:500,color:"var(--t2)"}}>{pillName}</span>{" end of treatment"}</>;
+                    } else if(ev.type==="stopped"){
+                      Icon=IconEventStop;
+                      evText=<><span style={{fontStyle:"normal",fontWeight:500,color:"var(--t2)"}}>{pillName}{dose?" "+dose:""}</span>{sess?" · "+sess:""}{" · stopped"}</>;
+                    } else if(ev.type==="added"){
+                      Icon=IconEventAdd;
+                      evText=<><span style={{fontStyle:"normal",fontWeight:500,color:"var(--t2)"}}>{pillName}{dose?" "+dose:""}</span>{sess?" · "+sess:""}{" · added"}</>;
+                    } else if(ev.type==="changed"){
+                      Icon=IconEventChange;
+                      evText=<><span style={{fontStyle:"normal",fontWeight:500,color:"var(--t2)"}}>{pillName}{" "}<span style={{textDecoration:"line-through"}}>{ev.oldDose}</span>{" → "}{ev.newDose}</span>{sess?" · "+sess:""}</>;
+                    } else {
+                      Icon=IconArchive;
+                      evText=<><span style={{fontStyle:"normal",fontWeight:500,color:"var(--t2)"}}>{pillName}</span>{" "+ev.type}</>;
+                    }
+                    elements.push(<GroupRow key={key} first={isFirst}>
+                      <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px"}}>
+                        <span style={{color:"var(--t3)",display:"flex",flexShrink:0}}><Icon/></span>
+                        <span style={{fontSize:13,color:"var(--t3)",fontStyle:"italic"}}>{evText}</span>
+                      </div>
+                    </GroupRow>);
+                  });
+                  // Date-only event rows (no histEntry for that date)
+                  if(!histEntry&&dayEvents.length>0){
+                    // already rendered above, just ensure rowIndex is correct
                   }
                   return elements;
                 });
@@ -855,7 +936,7 @@ function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchi
           <div style={{background:"var(--card)",borderRadius:16,overflow:"hidden",boxShadow:"var(--shadow-sm)"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>App</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Posology</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v114</span></div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v115</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Storage</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Supabase</span></div>
           </div>
@@ -960,6 +1041,8 @@ function App(){
   const [installPrompt,setInstallPrompt]=useState(null);
   const [installed,setInstalled]=useState(false);
   const [detailSheet,setDetailSheet]=useState(null);
+  const [pendingVersionEdit,setPendingVersionEdit]=useState(null);
+  const [storedEvents,setStoredEvents]=useState([]);
   const [missedDtStr,setMissedDtStr]=useState(null);
   const [addSheet,setAddSheet]=useState(null);
   const [profile,setProfile]=useState({name:"",age:"",weight:"",height:""});
@@ -985,6 +1068,7 @@ function App(){
       const arch=await sbGet(ARCHIVED_KEY)||{morning:[],lunch:[],evening:[]};
       if(arch.night&&!arch.evening){arch.evening=arch.night;delete arch.night;}if(!arch.lunch)arch.lunch=[];
       setArchived(arch);
+      try{const evts=await sbGet(EVENTS_KEY)||[];setStoredEvents(Array.isArray(evts)?evts:[]);}catch(e){console.warn("events load failed",e);setStoredEvents([]);}
       const prof=await sbGet(PROFILE_KEY)||{name:"",age:"",weight:"",height:""};setProfile(prof);
       const today=todayStr();let log=await sbGet(dayKey(today));
       if(!log){log=buildEmptyLog(list);await sbSet(dayKey(today),log);}
@@ -1127,6 +1211,7 @@ function App(){
     for(const s of sessList){if(s!=="as_needed")newLog={...newLog,[s]:{...newLog[s],[id]:false}};}
     setPillList(newList);setTodayLog(newLog);
     await sbSet(PILL_LIST_KEY,newList);await sbSet(dayKey(todayStr()),newLog);
+    const evtsAfterAdd=[{type:"added",date:todayStr(),pillName:pill.name,dose:pill.dose||"",session:primarySess,pillId:id},...storedEvents];setStoredEvents(evtsAfterAdd);await sbSet(EVENTS_KEY,evtsAfterAdd);
     setTipsLoading(true);
     setAddSheet(null);
     generateTips(newList);
@@ -1161,6 +1246,7 @@ function App(){
     let newLog={...todayLog};
     const sessionsToClean=pill?.schedules?pill.schedules.map(s=>s.session):pill?.sessions||[foundSess];
     for(const s of sessionsToClean){if(newLog[s]){newLog={...newLog,[s]:{...newLog[s]}};delete newLog[s][id];}}
+    if(pill){const evtsAfterDel=[{type:"stopped",date:todayStr(),pillName:pill.name,dose:pill.dose||"",session:foundSess,pillId:id},...storedEvents];setStoredEvents(evtsAfterDel);await sbSet(EVENTS_KEY,evtsAfterDel);}
     setPillList(newList);setTodayLog(newLog);await sbSet(PILL_LIST_KEY,newList);await sbSet(dayKey(todayStr()),newLog);
     generateTips(newList);
   }
@@ -1175,7 +1261,7 @@ function App(){
   if(loading)return(<div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:"var(--t2)",fontSize:14}}>Loading…</div></div>);
   if(!USER_TOKEN)return <NoTokenView/>;
   if(!pillList)return(<div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:"var(--t2)",fontSize:14}}>Loading…</div></div>);
-  if(view==="history")return(<><HistoryView view={view} setView={setView} selectedDay={selectedDay} setSelectedDay={setSelectedDay} history={history} setHistory={setHistory} pillList={pillList} archived={archived} sessions={sessions} toggleHistoryTaken={toggleHistoryTaken}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={false}/></>);
+  if(view==="history")return(<><HistoryView view={view} setView={setView} selectedDay={selectedDay} setSelectedDay={setSelectedDay} history={history} setHistory={setHistory} pillList={pillList} archived={archived} sessions={sessions} toggleHistoryTaken={toggleHistoryTaken} storedEvents={storedEvents}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={false}/></>);
   if(view==="settings")return(<><SettingsView view={view} setView={setView} setSelectedDay={setSelectedDay} profile={profile} setProfile={setProfile} pillList={pillList} archived={archived} setPillList={setPillList} setArchived={setArchived} fileInputRef={fileInputRef}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={false}/></>);
   if(view==="nurse")return(<><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={false}/><HealthAssistant pillList={pillList} profile={profile} msgs={nurseMsgs} setMsgs={setNurseMsgs}/></>);
 
@@ -1431,19 +1517,27 @@ function App(){
           onSave={async(data)=>{
             const id=detailSheet.pill.id;
             const{schedules:newSchedules=[],sessions:newSessions,...rest}=data;
-            let newList={...pillList};
+            // as_needed: no versioning, just overwrite
             if(detailSheet.session==="as_needed"){
               const updatedPill={...detailSheet.pill,...rest,schedules:[],sessions:["as_needed"]};
-              newList={...pillList,as_needed:(pillList.as_needed||[]).map(p=>p.id===id?updatedPill:p)};
+              const newList={...pillList,as_needed:(pillList.as_needed||[]).map(p=>p.id===id?updatedPill:p)};
               setPillList(newList);await sbSet(PILL_LIST_KEY,newList);setDetailSheet(null);return;
             }
-            const oldSchedules=detailSheet.pill.schedules||[{session:detailSheet.session,timing:""}];
+            // detect clinical change: dose, schedules, startDate, durationDays
+            const old=detailSheet.pill;
+            const oldSchedStr=JSON.stringify((old.schedules||[{session:detailSheet.session,timing:""}]).map(s=>({session:s.session,timing:s.timing||""})));
+            const newSchedStr=JSON.stringify((newSchedules||[]).map(s=>({session:s.session,timing:s.timing||""})));
+            const clinicalChanged=(rest.dosageAmt!==old.dosageAmt||rest.dosageUnit!==old.dosageUnit||rest.dose!==old.dose||rest.startDate!==old.startDate||rest.durationDays!==old.durationDays||oldSchedStr!==newSchedStr);
+            if(clinicalChanged){setPendingVersionEdit({id,data,newSchedules,newSessions,rest});return;}
+            // cosmetic change only: overwrite in place
+            const oldSchedules=old.schedules||[{session:detailSheet.session,timing:""}];
             const oldSessions=oldSchedules.map(s=>s.session);
             const newSessList=newSchedules.map(s=>s.session);
             let primarySess=oldSessions[0];
             for(const s of["morning","lunch","evening"]){if((pillList[s]||[]).find(p=>p.id===id)){primarySess=s;break;}}
             const newPrimarySess=newSessList[0]||primarySess;
-            const updatedPill={...detailSheet.pill,...rest,schedules:newSchedules,sessions:newSessList};
+            const updatedPill={...old,...rest,schedules:newSchedules,sessions:newSessList};
+            let newList={...pillList};
             if(newPrimarySess!==primarySess){newList[primarySess]=(newList[primarySess]||[]).filter(p=>p.id!==id);newList[newPrimarySess]=[...(newList[newPrimarySess]||[]),updatedPill];}
             else{newList[primarySess]=(newList[primarySess]||[]).map(p=>p.id===id?updatedPill:p);}
             let newLog={...todayLog};
@@ -1456,6 +1550,43 @@ function App(){
         />
       </div>
     </BottomSheet>)}
+    {pendingVersionEdit&&(<div style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"flex-end",justifyContent:"center",background:"rgba(0,0,0,0.4)"}} onClick={()=>setPendingVersionEdit(null)}>
+      <div style={{width:"100%",maxWidth:480,background:"var(--card)",borderRadius:"20px 20px 0 0",padding:"28px 20px calc(28px + env(safe-area-inset-bottom))",boxShadow:"0 -4px 24px rgba(0,0,0,0.15)"}} onClick={e=>e.stopPropagation()}>
+        <div style={{fontSize:18,fontWeight:700,color:"var(--t1)",marginBottom:8}}>Changement de dose</div>
+        <div style={{fontSize:15,color:"var(--t2)",lineHeight:1.5,marginBottom:24}}>Ce changement s'appliquera à partir d'aujourd'hui. L'historique passé sera conservé tel quel avec l'ancienne dose.</div>
+        <button onClick={async()=>{
+          const{id,data,newSchedules,newSessions,rest}=pendingVersionEdit;
+          const old=detailSheet.pill;
+          const today=todayStr();
+          // 1. archive the old pill version with endDate=today
+          const existingArchived=await sbGet(ARCHIVED_KEY)||{morning:[],lunch:[],evening:[]};
+          let foundSessForArchive="morning";
+          for(const s of["morning","lunch","evening"]){if((pillList[s]||[]).find(p=>p.id===id)){foundSessForArchive=s;break;}}
+          const archivedPill={...old,endDate:today,archivedOn:today};
+          const newArchived={...existingArchived,[foundSessForArchive]:[...(existingArchived[foundSessForArchive]||[]),archivedPill]};
+          await sbSet(ARCHIVED_KEY,newArchived);setArchived(newArchived);
+          // 2. create new pill with new ID, startDate=today
+          const newSessList=(newSchedules||[]).map(s=>s.session);
+          const primarySess=newSessList[0]||foundSessForArchive;
+          const newId=primarySess[0]+Date.now();
+          const newPill={...old,...rest,id:newId,schedules:newSchedules||[],sessions:newSessList,startDate:today};
+          // 3. remove old pill from pillList, add new one
+          let newList={...pillList};
+          newList[foundSessForArchive]=(newList[foundSessForArchive]||[]).filter(p=>p.id!==id);
+          if(primarySess!==foundSessForArchive){newList[primarySess]=[...(newList[primarySess]||[]),newPill];}
+          else{newList[foundSessForArchive]=[...newList[foundSessForArchive],newPill];}
+          // 4. update today's log: remove old id, add new id as false
+          let newLog={...todayLog};
+          for(const s of["morning","lunch","evening"]){if(newLog[s]&&newLog[s][id]!==undefined){newLog={...newLog,[s]:{...newLog[s]}};delete newLog[s][id];}}
+          for(const s of newSessList){if(s!=="as_needed"){newLog={...newLog,[s]:{...newLog[s],[newId]:false}};}}
+          setTodayLog(newLog);await sbSet(dayKey(today),newLog);
+          setPillList(newList);await sbSet(PILL_LIST_KEY,newList);
+          const evtsAfterChange=[{type:"changed",date:today,pillName:old.name,oldDose:old.dose||"",newDose:rest.dose||"",session:foundSessForArchive,pillId:newId},...storedEvents];setStoredEvents(evtsAfterChange);await sbSet(EVENTS_KEY,evtsAfterChange);
+          setPendingVersionEdit(null);setDetailSheet(null);
+        }} style={{width:"100%",padding:"14px",borderRadius:14,background:"var(--acc)",color:"#fff",fontSize:16,fontWeight:600,border:"none",cursor:"pointer",marginBottom:12}}>Confirmer le changement</button>
+        <button onClick={()=>setPendingVersionEdit(null)} style={{width:"100%",padding:"12px",borderRadius:14,background:"transparent",color:"var(--t2)",fontSize:15,fontWeight:500,border:"none",cursor:"pointer"}}>Annuler</button>
+      </div>
+    </div>)}
     <TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={hasNewTips}/>
 
   </>);
@@ -1465,7 +1596,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 <script>
 if("serviceWorker"in navigator){
-  const sw='const C="pr-v114",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}if(e.request.mode==="navigate"){e.respondWith(fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;}).catch(()=>caches.match(e.request).then(r=>r||caches.match(self.location.pathname))));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
+  const sw='const C="pr-v115",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}if(e.request.mode==="navigate"){e.respondWith(fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;}).catch(()=>caches.match(e.request).then(r=>r||caches.match(self.location.pathname))));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
