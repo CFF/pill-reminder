@@ -51,8 +51,11 @@
         --shadow-lg:0 4px 14px rgba(0,0,0,0.42),0 1px 3px rgba(0,0,0,0.24);
       }
     }
-    @keyframes splashFade{0%{opacity:1}75%{opacity:1}100%{opacity:0}}
-    #splash{position:fixed;inset:0;z-index:9999;background:#faf7f2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;animation:splashFade 1.8s ease forwards;pointer-events:none;}
+    @keyframes splashFadeOut{from{opacity:1}to{opacity:0}}
+    #splash{position:fixed;inset:0;z-index:9999;background:#faf7f2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;pointer-events:none;transition:opacity 0.35s ease;}
+    @keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(200%)}}
+    #splash-bar-track{width:72px;height:2px;background:#e8d5c4;border-radius:2px;overflow:hidden;position:relative;margin-top:6px;}
+    #splash-bar-fill{position:absolute;top:0;left:0;width:40%;height:100%;background:linear-gradient(90deg,transparent,#c87941,transparent);border-radius:2px;animation:shimmer 1.1s cubic-bezier(0.4,0,0.2,1) infinite;}
     #splash.gone{display:none;}
     @keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.42)}75%{transform:scale(0.92)}100%{transform:scale(1)}}
     .pop{animation:pop 0.38s cubic-bezier(0.34,1.56,0.64,1);}
@@ -68,8 +71,8 @@
   </style>
 </head>
 <body style="background:var(--bg)">
-<div id="splash"><div style="display:flex;align-items:flex-end;gap:0;"><span style="font-family:'DM Serif Display',Georgia,serif;font-size:52px;color:#1a1410;letter-spacing:-0.01em;line-height:1;">Posology</span><svg width="28" height="20" viewBox="0 0 28 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-left:-10px;margin-bottom:4px;align-self:flex-end;"><g transform="translate(14,10) rotate(-66)"><clipPath id="pc-sp"><rect x="-9" y="-3" width="18" height="6" rx="3"/></clipPath><rect x="-9" y="-3" width="9" height="6" fill="#1a1410" clip-path="url(#pc-sp)"/><rect x="-9" y="-3" width="18" height="6" rx="3" stroke="#1a1410" stroke-width="1.5" fill="none"/><line x1="0" y1="-3" x2="0" y2="3" stroke="#1a1410" stroke-width="1"/></g></svg></div><p style="font-family:'DM Sans',sans-serif;font-size:12px;font-weight:400;letter-spacing:0.18em;text-transform:uppercase;color:#c87941;margin:0;">Medication tracker</p></div>
-<script>setTimeout(function(){var s=document.getElementById("splash");if(s){s.addEventListener("animationend",function(){s.classList.add("gone");});}},100);</script>
+<div id="splash"><div style="display:flex;align-items:flex-end;gap:0;"><span style="font-family:'DM Serif Display',Georgia,serif;font-size:52px;color:#1a1410;letter-spacing:-0.01em;line-height:1;">Posology</span><svg width="36" height="36" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-left:6px;margin-bottom:2px;align-self:flex-end;"><g transform="translate(256,256) rotate(-45)"><rect x="-140" y="-44" width="280" height="88" rx="44" fill="none" stroke="#e8956a" stroke-width="18"/></g><g transform="translate(256,256) rotate(45)"><rect x="-140" y="-44" width="280" height="88" rx="44" fill="#faf7f2" stroke="none"/></g><g transform="translate(256,256) rotate(45)"><rect x="-140" y="-44" width="280" height="88" rx="44" fill="none" stroke="#c87941" stroke-width="18"/><line x1="0" y1="-44" x2="0" y2="44" stroke="#c87941" stroke-width="18" stroke-linecap="round"/></g></svg></div><p style="font-family:'DM Sans',sans-serif;font-size:12px;font-weight:400;letter-spacing:0.18em;text-transform:uppercase;color:#c87941;margin:0;">Medication tracker</p><div id="splash-bar-track"><div id="splash-bar-fill"></div></div></div>
+<script>window.hideSplash=function(){var s=document.getElementById("splash");if(!s||s.classList.contains("gone"))return;s.style.opacity="0";setTimeout(function(){s.classList.add("gone");},370);};</script>
 <div id="root"></div>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -342,17 +345,30 @@ function PillForm({initial,accent,onSave,onCancel,submitLabel="Add",defaultSessi
     setScanLoading(true);
     try{
       const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(",")[1]);r.onerror=rej;r.readAsDataURL(file);});
-      const fetchRes=await fetch("https://fotzkqkghxndjnomrspr.supabase.co/functions/v1/nurse-chat",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvdHprcWtnaHhuZGpub21yc3ByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MTg0MTMsImV4cCI6MjA5NjM5NDQxM30.o8AyVFlhd_g0NbdB1hd28x8ERxmCO4OjXPuwVoCJano"},body:JSON.stringify({system:"",messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:file.type,data:b64}},{type:"text",text:"This is a pharmacy label or medication packaging. Extract info and respond ONLY with valid JSON, no markdown, no explanation. Fields: name (string), dosageAmt (number or null), dosageUnit (string or null), quantity (number, default 1), session (one of morning/lunch/evening or null), timing (one of with_meal/before_meal/after_meal or null), durationDays (number or null), ongoing (boolean)"}]}]})});
+      const fetchRes=await fetch("https://fotzkqkghxndjnomrspr.supabase.co/functions/v1/nurse-chat",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvdHprcWtnaHhuZGpub21yc3ByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MTg0MTMsImV4cCI6MjA5NjM5NDQxM30.o8AyVFlhd_g0NbdB1hd28x8ERxmCO4OjXPuwVoCJano"},body:JSON.stringify({system:"",messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:file.type,data:b64}},{type:"text",text:"This is a pharmacy label or medication packaging. It may be in French or English. Extract ALL dosing schedules and respond ONLY with a valid JSON array — never a single object, always an array. One array element per daily intake time. Fields per element: name (string), dosageAmt (number or null), dosageUnit (string or null), quantity (number, default 1), session (MUST be one of: morning/lunch/evening — map dejeuner/matin/morn to morning, diner/midi/lunch to lunch, coucher/soir/evening/bedtime to evening), timing (one of with_meal/before_meal/after_meal or null), durationDays (number or null — convert months to days: 3 mois = 90), ongoing (boolean). CRITICAL: if label says 2 times per day or 2 fois par jour, you MUST return exactly 2 objects in the array. If 3 times, return 3 objects. Never merge multiple intake times into one object."}]}]})});
       const data=await fetchRes.json();
       const text=data.content?.find(b=>b.type==="text")?.text||"";
-      const parsed=JSON.parse(text.replace(/```json|```/g,"").trim());
-      if(parsed.name)setName(parsed.name);
-      if(parsed.dosageAmt)setDosageAmt(Number(parsed.dosageAmt));
-      if(parsed.dosageUnit)setDosageUnit(parsed.dosageUnit);
-      if(parsed.quantity)setQuantity(Number(parsed.quantity));
-      if(parsed.session)setSchedules([{session:parsed.session,timing:parsed.timing||""}]);
-      if(parsed.durationDays){setDurationDays(Number(parsed.durationDays));setOngoing(false);}
-      else if(parsed.ongoing)setOngoing(true);
+      const rawParsed=JSON.parse(text.replace(/```json|```/g,"").trim());
+      const entries=Array.isArray(rawParsed)?rawParsed:[rawParsed];
+      if(entries.length===1){
+        const p=entries[0];
+        if(p.name)setName(p.name);
+        if(p.dosageAmt)setDosageAmt(Number(p.dosageAmt));
+        if(p.dosageUnit)setDosageUnit(p.dosageUnit);
+        if(p.quantity)setQuantity(Number(p.quantity));
+        if(p.session)setSchedules([{session:p.session,timing:p.timing||""}]);
+        if(p.durationDays){setDurationDays(Number(p.durationDays));setOngoing(false);}
+        else if(p.ongoing)setOngoing(true);
+      } else {
+        for(const p of entries){
+          if(!p.name)continue;
+          const dose=(p.quantity||1)+" x "+(p.dosageAmt||"")+( p.dosageUnit||"");
+          const sess=p.session||"morning";
+          const scheduleEntry=[{session:sess,timing:p.timing||""}];
+          const dur=p.durationDays?Number(p.durationDays):null;
+          onSave({name:p.name.trim(),dose,dosageAmt:p.dosageAmt,dosageUnit:p.dosageUnit,quantity:p.quantity||1,shape:"capsule",schedules:scheduleEntry,sessions:[sess],startDate:new Date().toISOString().slice(0,10),durationDays:dur,asNeeded:false,maxDailyDose:null,minIntervalHours:null});
+        }
+      }
     }catch(err){console.error("Scan error",err);alert("Scan failed — please fill in manually.");}
     finally{setScanLoading(false);if(imageInputRef.current)imageInputRef.current.value="";}
   }
@@ -905,7 +921,7 @@ function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchi
               const logs={};for(const r of days)logs[r.key.replace("pr:day:","")]=r.value;
               const data={pillList,archived,logs,profile,exportedAt:new Date().toISOString()};
               const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
-              const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="posology-backup.json";a.click();URL.revokeObjectURL(url);
+              const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`posology-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(url);
             }} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"15px 16px",background:"transparent",color:"var(--t1)",fontSize:15,fontWeight:500,textAlign:"left"}}>Create backup<span style={{fontSize:13,color:"var(--blue)"}}>Download JSON</span></button>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
             <button onClick={()=>fileInputRef.current?.click()} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"15px 16px",background:"transparent",color:"var(--t1)",fontSize:15,fontWeight:500,textAlign:"left"}}>Import backup<span style={{fontSize:13,color:"var(--blue)"}}>Choose JSON</span></button>
@@ -936,7 +952,7 @@ function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchi
           <div style={{background:"var(--card)",borderRadius:16,overflow:"hidden",boxShadow:"var(--shadow-sm)"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>App</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Posology</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v119</span></div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v120</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Storage</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Supabase</span></div>
           </div>
@@ -970,9 +986,9 @@ function NoTokenView(){
 
 function App(){
   const [view,setView]=useState("today");
-  const [pillList,setPillList]=useState(null);
+  const [pillList,setPillList]=useState(DEFAULT_PILLS);
   const [archived,setArchived]=useState({morning:[],lunch:[],evening:[]});
-  const [todayLog,setTodayLog]=useState(null);
+  const [todayLog,setTodayLog]=useState({morning:{},lunch:{},evening:{}});
   const [asNeededTs,setAsNeededTs]=useState({});
   const [history,setHistory]=useState([]);
   const [flash,setFlash]=useState(null);
@@ -1089,12 +1105,12 @@ function App(){
       console.warn("load failed",e);
       setLoadError(true);
     }finally{
-      setLoading(false);
+      setLoading(false);if(window.hideSplash)window.hideSplash();
     }
   },[]);
 
   useEffect(()=>{
-    if(!USER_TOKEN){setLoading(false);return;}
+    if(!USER_TOKEN){if(window.hideSplash)window.hideSplash();setLoading(false);return;}
     loadData();
     const goOnline=()=>{setIsOnline(true);flushSyncQueue();};
     const goOffline=()=>setIsOnline(false);
@@ -1202,6 +1218,25 @@ function App(){
   }
 
   async function addPill(defaultSession,pillData){
+    if(pillData._multiEntry&&pillData.entries){
+      let newList={...pillList};
+      let newLog={...todayLog};
+      let newEvts=[...storedEvents];
+      const today=todayStr();
+      for(const entry of pillData.entries){
+        const sess=entry.sessions?.[0]||"morning";
+        const id=sess[0]+Date.now()+Math.random().toString(36).slice(2,5);
+        const pill={id,...entry,schedules:entry.schedules||[{session:sess,timing:""}],sessions:[sess]};
+        newList={...newList,[sess]:[...(newList[sess]||[]),pill]};
+        newLog={...newLog,[sess]:{...newLog[sess],[id]:false}};
+        newEvts=[{type:"added",date:today,pillName:pill.name,dose:pill.dose||"",session:sess,pillId:id},...newEvts];
+      }
+      setPillList(newList);setTodayLog(newLog);
+      await sbSet(PILL_LIST_KEY,newList);await sbSet(dayKey(today),newLog);
+      setStoredEvents(newEvts);await sbSet(EVENTS_KEY,newEvts);
+      setTipsLoading(true);setAddSheet(null);generateTips(newList);
+      return;
+    }
     const{sessions:pillSessions=null,schedules:pillSchedules=null,session:legacySess,...rest}=pillData;
     const sessList=pillSessions||(legacySess&&legacySess!=="as_needed"?[legacySess]:[defaultSession]);
     const primarySess=sessList[0]||defaultSession;
@@ -1259,9 +1294,7 @@ function App(){
     <div style={{fontSize:14,color:"var(--t2)",marginBottom:24,maxWidth:280,lineHeight:1.5}}>Couldn't load your data. Check your connection and try again.</div>
     <button onClick={()=>loadData()} style={{background:"var(--acc)",color:"#fff",border:"none",borderRadius:12,padding:"12px 28px",fontSize:15,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Retry</button>
   </div>);
-  if(loading)return(<div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:"var(--t2)",fontSize:14}}>Loading…</div></div>);
   if(!USER_TOKEN)return <NoTokenView/>;
-  if(!pillList)return(<div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:"var(--t2)",fontSize:14}}>Loading…</div></div>);
   if(view==="history")return(<><HistoryView view={view} setView={setView} selectedDay={selectedDay} setSelectedDay={setSelectedDay} history={history} setHistory={setHistory} pillList={pillList} archived={archived} sessions={sessions} toggleHistoryTaken={toggleHistoryTaken} storedEvents={storedEvents}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={false}/></>);
   if(view==="settings")return(<><SettingsView view={view} setView={setView} setSelectedDay={setSelectedDay} profile={profile} setProfile={setProfile} pillList={pillList} archived={archived} setPillList={setPillList} setArchived={setArchived} fileInputRef={fileInputRef}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={false}/></>);
   if(view==="nurse")return(<><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={false}/><HealthAssistant pillList={pillList} profile={profile} msgs={nurseMsgs} setMsgs={setNurseMsgs}/></>);
@@ -1617,7 +1650,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 <script>
 if("serviceWorker"in navigator){
-  const sw='const C="pr-v119",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}if(e.request.mode==="navigate"){e.respondWith(fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;}).catch(()=>caches.match(e.request).then(r=>r||caches.match(self.location.pathname))));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
+  const sw='const C="pr-v120",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}if(e.request.mode==="navigate"){e.respondWith(fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;}).catch(()=>caches.match(e.request).then(r=>r||caches.match(self.location.pathname))));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
