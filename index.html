@@ -726,7 +726,7 @@ const TABS=[{key:"today",label:"Today",Icon:IconTabToday},{key:"history",label:"
 function TabBar({view,setView,setSelectedDay,hasNewTips}){
   return(<div id="main-tabbar" style={{position:"fixed",bottom:0,left:0,right:0,zIndex:500,background:"var(--card)",borderTop:"0.5px solid var(--sep)",display:"flex",paddingBottom:"env(safe-area-inset-bottom,16px)",boxShadow:"0 -1px 12px rgba(0,0,0,0.07)"}}>
     {TABS.map(({key,label,Icon})=>{const active=view===key;return(
-      <button key={key} onClick={()=>{setView(key);setSelectedDay(null);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,padding:"10px 0 6px",background:"transparent",border:"none",cursor:"pointer",color:active?"var(--acc)":"var(--t3)",transition:"color 0.15s"}}>
+      <button key={key} onClick={()=>{if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();setTimeout(()=>{setView(key);setSelectedDay(null);},50);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,padding:"10px 0 6px",background:"transparent",border:"none",cursor:"pointer",color:active?"var(--acc)":"var(--t3)",transition:"color 0.15s"}}>
         <div style={{position:"relative",display:"inline-flex"}}>
           <Icon active={active}/>
           {key==="today"&&hasNewTips&&<div style={{position:"absolute",top:-1,right:-4,width:7,height:7,borderRadius:"50%",background:"var(--acc)",border:"1.5px solid var(--card)"}}/>}
@@ -960,7 +960,7 @@ function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchi
           <div style={{background:"var(--card)",borderRadius:16,overflow:"hidden",boxShadow:"var(--shadow-sm)"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>App</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Posology</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v127</span></div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v128</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Storage</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Supabase</span></div>
           </div>
@@ -1528,7 +1528,7 @@ function App(){
                   <span style={{fontSize:13,fontWeight:500,color:"var(--t2)",minWidth:52}}>{ord} dose</span>
                   <input type="time" defaultValue={tsToTimeInput(ts)}
                     onBlur={e=>{const newVal=e.target.value;if(!newVal)return;const idx=timestamps.indexOf(ts);const newTs=[...timestamps];newTs[idx]=timeInputToTs(newVal,ts);updateTimestamps(newTs);}}
-                    style={{flex:1,border:"none",background:"transparent",color:"var(--blue)",fontSize:15,fontWeight:500,cursor:"pointer",padding:0}}/>
+                    style={{flex:1,border:"none",background:"transparent",color:"var(--blue)",fontSize:16,fontWeight:500,cursor:"pointer",padding:0}}/>
                   <button onClick={()=>{const idx=timestamps.indexOf(ts);updateTimestamps([...timestamps.slice(0,idx),...timestamps.slice(idx+1)]);}}
                     style={{width:28,height:28,borderRadius:8,background:"rgba(229,52,44,0.10)",border:"none",color:"var(--red)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>
@@ -1661,7 +1661,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 <script>
 if("serviceWorker"in navigator){
-  const sw='const C="pr-v127",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}if(e.request.mode==="navigate"){e.respondWith(fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;}).catch(()=>caches.match(e.request).then(r=>r||caches.match(self.location.pathname))));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
+  const sw='const C="pr-v128",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}if(e.request.mode==="navigate"){e.respondWith(fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;}).catch(()=>caches.match(e.request).then(r=>r||caches.match(self.location.pathname))));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
