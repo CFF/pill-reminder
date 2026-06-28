@@ -65,6 +65,7 @@
     @keyframes pillIn{from{opacity:0;transform:translateY(8px) scale(0.98)}to{opacity:1;transform:translateY(0) scale(1)}}
     .pill-card{animation:pillIn 0.32s cubic-bezier(0.22,1,0.36,1) both;}
     @keyframes spin{to{transform:rotate(360deg)}} @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}} @keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}} @keyframes nfade{0%,100%{opacity:.25}50%{opacity:.85}}
+    .mc-textarea::placeholder{color:var(--t3);font-size:14px}
     .ring-fill{transition:stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1);}
     .row-press:active{background:var(--bg2)!important;transition:none;}
     .pill-press:active{transform:scale(0.985);transition:transform 0.1s;}
@@ -588,12 +589,13 @@ function asNeededStatus(timestamps,pill){
 const _k1="sk-ant-",_k2="api03-SEHKMjVQKiarWduKxDvAWxqAHLNXUzD4hOUM8919Rcd7vfz5VPaqApJ4e5_naxddNBAFKxmt23Aff3UU-84Fdw-6amcPAAA";
 const HEALTH_ASSISTANT_API_KEY=_k1+_k2;
 
-function HealthAssistant({pillList,profile,onClose,msgs,setMsgs}){
+function HealthAssistant({pillList,profile,medicalContext,setView,onClose,msgs,setMsgs}){
   const [input,setInput]=React.useState("");
   const [loading,setLoading]=React.useState(false);
   const [err,setErr]=React.useState(null);
   const [showDown,setShowDown]=React.useState(false);
   const [kb,setKb]=React.useState(0);
+  const [contextOpen,setContextOpen]=React.useState(false);
   const bottomRef=React.useRef(null);
   const inputRef=React.useRef(null);
   const didScroll=React.useRef(false);
@@ -614,7 +616,44 @@ function HealthAssistant({pillList,profile,onClose,msgs,setMsgs}){
   const pillSummary=allPills.length>0?allPills.map(p=>p.name+(p.dose?" "+p.dose:"")+(p.asNeeded?" (as needed)":"")).join(", "):"No medications listed";
   const profileSummary=[profile?.age?"Age: "+profile.age:"",profile?.weight?"Weight: "+profile.weight:"",profile?.height?"Height: "+profile.height:""].filter(Boolean).join(", ")||"No profile info";
 
-  const systemPrompt=`You are a warm, knowledgeable health companion for someone managing their daily treatment — like a trusted, experienced nurse who respects the person's time.\n\nTheir current medications: ${pillSummary}\nTheir profile: ${profileSummary}\n\nHow to answer:\n- Be brief: usually 2 to 4 sentences. Lead with the direct answer, with no preamble and no restating the question.\n- Be specific to THEIR treatment. Name their actual medications and tie what you say to their situation. Avoid generic health filler that could apply to anyone.\n- Use plain, warm language. Use **bold** sparingly to highlight one key term or action.\n- Only suggest consulting their doctor when it genuinely matters, not as a reflex on every reply.\n\nBoundaries:\n- Inform and explain, but never diagnose or give a personal medical recommendation.\n- Never tell them to start, stop, or change a treatment.\n- If something is outside your scope or you are unsure, say so briefly and kindly.\n\nAlways answer in the language the user writes in.`;
+  const buildSystemPrompt=()=>{
+    const mc=medicalContext||{};
+    const lines=[];
+    lines.push("You are a warm, knowledgeable health companion for someone managing their daily treatment — like a trusted, experienced nurse who respects the person's time.");
+    lines.push("");
+    lines.push("CONFIDENTIALITY: The data below was provided by the user to improve your responses. Do not repeat it back unless directly relevant. Do not mention it unprompted.");
+    const profileLines=[];
+    if(profile?.name)profileLines.push("Name: "+profile.name);
+    if(profile?.age)profileLines.push("Age: "+profile.age);
+    if(profile?.weight)profileLines.push("Weight: "+profile.weight+" kg");
+    if(profile?.height)profileLines.push("Height: "+profile.height+" cm");
+    if(profileLines.length>0){lines.push("");lines.push("USER PROFILE:");profileLines.forEach(l=>lines.push(l));}
+    const mcLines=[];
+    if(mc.conditions)mcLines.push("Chronic conditions: "+mc.conditions);
+    if(mc.allergies)mcLines.push("Allergies and intolerances: "+mc.allergies);
+    if(mc.history)mcLines.push("Important history: "+mc.history);
+    if(mc.notes)mcLines.push("Notes: "+mc.notes);
+    if(mcLines.length>0){lines.push("");lines.push("MEDICAL CONTEXT:");mcLines.forEach(l=>lines.push(l));}
+    const treatmentLines=[];
+    ["morning","lunch","evening"].forEach(sess=>{(pillList[sess]||[]).forEach(p=>{let entry=p.name+(p.dose?" "+p.dose:"")+" ("+sess+")";if(p.reason)entry+=" — "+p.reason;treatmentLines.push("- "+entry);});});
+    (pillList.as_needed||[]).forEach(p=>{let entry=p.name+(p.dose?" "+p.dose:"")+" (as needed)";if(p.reason)entry+=" — "+p.reason;treatmentLines.push("- "+entry);});
+    if(treatmentLines.length>0){lines.push("");lines.push("ACTIVE TREATMENT:");treatmentLines.forEach(l=>lines.push(l));}else{lines.push("");lines.push("ACTIVE TREATMENT: None listed.");}
+    lines.push("");
+    lines.push("How to answer:");
+    lines.push("- Be brief: usually 2 to 4 sentences. Lead with the direct answer, with no preamble and no restating the question.");
+    lines.push("- Be specific to THEIR treatment. Name their actual medications and tie what you say to their situation. Avoid generic health filler that could apply to anyone.");
+    lines.push("- Use plain, warm language. Use **bold** sparingly to highlight one key term or action.");
+    lines.push("- Only suggest consulting their doctor when it genuinely matters, not as a reflex on every reply.");
+    lines.push("");
+    lines.push("Boundaries:");
+    lines.push("- Inform and explain, but never diagnose or give a personal medical recommendation.");
+    lines.push("- Never tell them to start, stop, or change a treatment.");
+    lines.push("- If something is outside your scope or you are unsure, say so briefly and kindly.");
+    lines.push("");
+    lines.push("Always answer in the language the user writes in.");
+    return lines.join("\n");
+  };
+  const systemPrompt=buildSystemPrompt();
 
   React.useEffect(()=>{if(!didScroll.current){didScroll.current=true;return;}bottomRef.current?.scrollIntoView({behavior:"smooth"});},[msgs,loading,err]);
   React.useEffect(()=>{const el=bottomRef.current;if(!el){setShowDown(false);return;}const io=new IntersectionObserver(function(entries){setShowDown(msgs.length>0&&!entries[0].isIntersecting);},{rootMargin:"0px 0px -150px 0px",threshold:0});io.observe(el);return ()=>io.disconnect();},[msgs.length,loading,err]);
@@ -652,9 +691,39 @@ function HealthAssistant({pillList,profile,onClose,msgs,setMsgs}){
       <div style={{background:"var(--card)",borderRadius:"0 0 24px 24px",boxShadow:"var(--shadow-md)",marginBottom:6,paddingTop:"calc(env(safe-area-inset-top,20px) + 20px)",paddingBottom:18,paddingLeft:20,paddingRight:20,backgroundImage:"radial-gradient(ellipse at 110% -10%, var(--acc-glow) 0%, transparent 60%)"}}>
         <h1 className="serif" style={{fontSize:34,fontWeight:400,color:"var(--t1)",letterSpacing:"-0.01em",lineHeight:1.1,margin:0}}>Health Assistant</h1>
       </div>
-      {allPills.length>0&&(
-        <div style={{padding:"12px 22px 0",fontSize:12.5,color:"var(--t2)",lineHeight:1.4}}>Aware of your treatment: <span style={{color:"var(--t1)",fontWeight:600}}>{pillSummary}</span></div>
-      )}
+      {(()=>{
+        const mc=medicalContext||{};
+        const filledFields=[mc.conditions,mc.allergies,mc.history,mc.notes].filter(Boolean);
+        const pillsWithReason=(allPills||[]).filter(p=>p.reason);
+        const totalCount=filledFields.length+pillsWithReason.length;
+        if(totalCount===0){
+          return allPills.length>0?(
+            <div style={{padding:"12px 22px 0",fontSize:12.5,color:"var(--t2)",lineHeight:1.4}}>Aware of your treatment: <span style={{color:"var(--t1)",fontWeight:600}}>{pillSummary}</span></div>
+          ):null;
+        }
+        const summaryLabel=totalCount===1?"1 élément renseigné":totalCount+" éléments renseignés";
+        return(
+          <div style={{margin:"10px 16px 0",background:"var(--card)",borderRadius:14,boxShadow:"var(--shadow-sm)",overflow:"hidden"}}>
+            <button onClick={()=>setContextOpen(o=>!o)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",background:"transparent",border:"none",cursor:"pointer",textAlign:"left"}}>
+              <span style={{fontSize:13,fontWeight:600,color:"var(--t2)"}}>Contexte médical</span>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:12,color:"var(--t3)"}}>{summaryLabel}</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transform:contextOpen?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
+            </button>
+            {contextOpen&&(
+              <div style={{padding:"0 14px 12px",borderTop:"0.5px solid var(--sep)"}}>
+                {mc.conditions&&<div style={{marginTop:10}}><span style={{fontSize:11,fontWeight:600,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em"}}>Conditions</span><p style={{margin:"3px 0 0",fontSize:13.5,color:"var(--t1)",lineHeight:1.5}}>{mc.conditions}</p></div>}
+                {mc.allergies&&<div style={{marginTop:10}}><span style={{fontSize:11,fontWeight:600,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em"}}>Allergies</span><p style={{margin:"3px 0 0",fontSize:13.5,color:"var(--t1)",lineHeight:1.5}}>{mc.allergies}</p></div>}
+                {mc.history&&<div style={{marginTop:10}}><span style={{fontSize:11,fontWeight:600,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em"}}>Antécédents</span><p style={{margin:"3px 0 0",fontSize:13.5,color:"var(--t1)",lineHeight:1.5}}>{mc.history}</p></div>}
+                {mc.notes&&<div style={{marginTop:10}}><span style={{fontSize:11,fontWeight:600,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em"}}>Notes</span><p style={{margin:"3px 0 0",fontSize:13.5,color:"var(--t1)",lineHeight:1.5}}>{mc.notes}</p></div>}
+                {pillsWithReason.length>0&&<div style={{marginTop:10}}><span style={{fontSize:11,fontWeight:600,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em"}}>Médicaments</span>{pillsWithReason.map(p=><p key={p.id} style={{margin:"3px 0 0",fontSize:13.5,color:"var(--t1)",lineHeight:1.5}}>{p.name}{p.dose?" "+p.dose:""} — {p.reason}</p>)}</div>}
+                <button onClick={()=>setView("settings")} style={{marginTop:8,background:"none",border:"none",padding:"10px 0",fontSize:13,color:"var(--acc)",cursor:"pointer",fontWeight:500,display:"block"}}>Modifier</button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {msgs.length===0&&!loading&&!err?(
         <div style={{display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center",padding:"52px 32px 40px"}}>
@@ -723,10 +792,10 @@ const IconTabNurse=({active})=><svg width="24" height="24" viewBox="0 0 24 24" f
 
 const TABS=[{key:"today",label:"Today",Icon:IconTabToday},{key:"history",label:"History",Icon:IconTabHistory},{key:"nurse",label:"Assistant",Icon:IconTabNurse},{key:"settings",label:"Settings",Icon:IconTabSettings}];
 
-function TabBar({view,setView,setSelectedDay,hasNewTips,onTabChange}){
+function TabBar({view,setView,setSelectedDay,hasNewTips}){
   return(<div id="main-tabbar" style={{position:"fixed",bottom:0,left:0,right:0,zIndex:500,background:"var(--card)",borderTop:"0.5px solid var(--sep)",display:"flex",paddingBottom:"env(safe-area-inset-bottom,16px)",boxShadow:"0 -1px 12px rgba(0,0,0,0.07)"}}>
     {TABS.map(({key,label,Icon})=>{const active=view===key;return(
-      <button key={key} onClick={()=>{if(onTabChange)onTabChange(key);else{if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();setTimeout(()=>{setView(key);setSelectedDay(null);},50);}}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,padding:"10px 0 6px",background:"transparent",border:"none",cursor:"pointer",color:active?"var(--acc)":"var(--t3)",transition:"color 0.15s"}}>
+      <button key={key} onClick={()=>{setView(key);setSelectedDay(null);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,padding:"10px 0 6px",background:"transparent",border:"none",cursor:"pointer",color:active?"var(--acc)":"var(--t3)",transition:"color 0.15s"}}>
         <div style={{position:"relative",display:"inline-flex"}}>
           <Icon active={active}/>
           {key==="today"&&hasNewTips&&<div style={{position:"absolute",top:-1,right:-4,width:7,height:7,borderRadius:"50%",background:"var(--acc)",border:"1.5px solid var(--card)"}}/>}
@@ -901,7 +970,7 @@ function HistoryView({view,setView,selectedDay,setSelectedDay,history,setHistory
   </div>);
 }
 
-function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchived,fileInputRef}){
+function SettingsView({profile,setProfile,medicalContext,setMedicalContext,pillList,archived,setPillList,setArchived,fileInputRef}){
   return(<div style={{minHeight:"100vh",background:"var(--bg)",paddingBottom:"calc(90px + env(safe-area-inset-bottom,0px))"}} className="fade-up scroll-view">
     <div style={{maxWidth:480,margin:"0 auto"}}>
       <div style={{background:"var(--card)",borderRadius:"0 0 24px 24px",boxShadow:"var(--shadow-md)",marginBottom:6,paddingTop:"calc(env(safe-area-inset-top,20px) + 20px)",paddingBottom:18,paddingLeft:20,paddingRight:20}}>
@@ -916,6 +985,36 @@ function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchi
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}>
                   <span style={{fontSize:15,color:"var(--t2)",fontWeight:500}}>{label}</span>
                   <input type={type} inputMode={inputMode} value={profile[field]||""} placeholder={placeholder} onChange={e=>{const v=e.target.value;const newP={...profile,[field]:v};setProfile(newP);sbSet(PROFILE_KEY,newP);}} style={{border:"none",background:"transparent",color:"var(--t1)",fontSize:16,fontWeight:500,textAlign:"right",width,WebkitAppearance:"none"}}/>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{marginBottom:28}}>
+          <div style={{fontSize:12,fontWeight:600,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:10}}>Contexte médical</div>
+          <div style={{background:"var(--card)",borderRadius:16,overflow:"hidden",boxShadow:"var(--shadow-sm)"}}>
+            {[
+              {field:"conditions",label:"Conditions chroniques",placeholder:"Ex. : diabète de type 2, hypothyroïdie…",maxLen:300},
+              {field:"allergies",label:"Allergies et intolérances",placeholder:"Ex. : pénicilline, aspirine, lactose…",maxLen:200},
+              {field:"history",label:"Antécédents importants",placeholder:"Ex. : opération cardiaque 2019, grossesse…",maxLen:300},
+              {field:"notes",label:"Notes libres",placeholder:"Tout ce qui peut aider le Nurse à mieux répondre",maxLen:500}
+            ].map(({field,label,placeholder,maxLen},i)=>(
+              <div key={field} style={{position:"relative"}}>
+                {i>0&&<div style={{position:"absolute",top:0,left:16,right:0,height:"0.5px",background:"var(--sep)"}}/>}
+                <div style={{padding:"10px 16px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
+                    <span style={{fontSize:15,color:"var(--t1)",fontWeight:600}}>{label}</span>
+                    <span style={{fontSize:12,color:"var(--t3)"}}>{(medicalContext[field]||"").length}/{maxLen}</span>
+                  </div>
+                  <textarea
+                    value={medicalContext[field]||""}
+                    placeholder={placeholder}
+                    maxLength={maxLen}
+                    rows={1}
+                    onChange={e=>{const v=e.target.value;const mc={...medicalContext,[field]:v};setMedicalContext(mc);sbSet("pr:medical-context",mc);e.target.style.height="auto";e.target.style.height=e.target.scrollHeight+"px";}}
+                    onFocus={e=>{e.target.style.height="auto";e.target.style.height=e.target.scrollHeight+"px";}}
+                    className="mc-textarea" style={{width:"100%",border:"none",background:"transparent",color:"var(--t1)",fontSize:16,resize:"none",outline:"none",lineHeight:1.5,WebkitAppearance:"none",boxSizing:"border-box",padding:0,fontFamily:"inherit",overflow:"hidden"}}
+                  />
                 </div>
               </div>
             ))}
@@ -960,7 +1059,7 @@ function SettingsView({profile,setProfile,pillList,archived,setPillList,setArchi
           <div style={{background:"var(--card)",borderRadius:16,overflow:"hidden",boxShadow:"var(--shadow-sm)"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>App</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Posology</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v130</span></div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v131</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Storage</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Supabase</span></div>
           </div>
@@ -1071,6 +1170,7 @@ function App(){
   const [missedDtStr,setMissedDtStr]=useState(null);
   const [addSheet,setAddSheet]=useState(null);
   const [profile,setProfile]=useState({name:"",age:"",weight:"",height:""});
+  const [medicalContext,setMedicalContext]=useState({conditions:"",allergies:"",history:"",notes:""});
   const [now,setNow]=useState(Date.now());
   const fileInputRef=useRef(null);
 
@@ -1095,6 +1195,7 @@ function App(){
       setArchived(arch);
       try{const evts=await sbGet(EVENTS_KEY)||[];setStoredEvents(Array.isArray(evts)?evts:[]);}catch(e){console.warn("events load failed",e);setStoredEvents([]);}
       const prof=await sbGet(PROFILE_KEY)||{name:"",age:"",weight:"",height:""};setProfile(prof);
+      const mc=await sbGet("pr:medical-context")||{conditions:"",allergies:"",history:"",notes:""};setMedicalContext(mc);
       const today=todayStr();let log=await sbGet(dayKey(today));
       if(!log){log=buildEmptyLog(list);await sbSet(dayKey(today),log);}
       setTodayLog(log);
@@ -1304,8 +1405,8 @@ function App(){
   </div>);
   if(!USER_TOKEN)return <NoTokenView/>;
   if(view==="history")return(<><HistoryView view={view} setView={setView} selectedDay={selectedDay} setSelectedDay={setSelectedDay} history={history} setHistory={setHistory} pillList={pillList} archived={archived} sessions={sessions} toggleHistoryTaken={toggleHistoryTaken} storedEvents={storedEvents}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={false}/></>);
-  if(view==="settings")return(<><SettingsView view={view} setView={setView} setSelectedDay={setSelectedDay} profile={profile} setProfile={setProfile} pillList={pillList} archived={archived} setPillList={setPillList} setArchived={setArchived} fileInputRef={fileInputRef}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={false}/></>);
-  if(view==="nurse")return(<><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={false}/><HealthAssistant pillList={pillList} profile={profile} msgs={nurseMsgs} setMsgs={setNurseMsgs}/></>);
+  if(view==="settings")return(<><SettingsView view={view} setView={setView} setSelectedDay={setSelectedDay} profile={profile} setProfile={setProfile} medicalContext={medicalContext} setMedicalContext={setMedicalContext} pillList={pillList} archived={archived} setPillList={setPillList} setArchived={setArchived} fileInputRef={fileInputRef}/><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={false}/></>);
+  if(view==="nurse")return(<><TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={false}/><HealthAssistant pillList={pillList} profile={profile} medicalContext={medicalContext} setView={setView} msgs={nurseMsgs} setMsgs={setNurseMsgs}/></>);
 
   const total=sessions.reduce((s,{key})=>s+getPillsForSession(pillList,key).length,0);
   const taken=sessions.reduce((s,{key})=>{const p=getPillsForSession(pillList,key),l=todayLog[key]||{};return s+p.filter(x=>l[x.id]).length;},0);
@@ -1463,7 +1564,7 @@ function App(){
     </div>
 
     {(hasNewTips||tipsLoading)&&(()=>{const ready=hasNewTips&&!tipsLoading;return(<button onClick={ready?()=>{const firstNewLabel=[...newTipLabels][0];const el=firstNewLabel&&tipCardRefs.current[firstNewLabel];(el||tipsRef.current)&&(el||tipsRef.current).scrollIntoView({behavior:"smooth",block:"center"});}:null} style={{position:"fixed",bottom:"calc(80px + env(safe-area-inset-bottom,0px))",left:"50%",transform:"translateX(-50%)",zIndex:490,background:ready?"var(--acc)":"#888",color:"#fff",border:"none",borderRadius:20,padding:"9px 18px",fontSize:13,fontWeight:600,boxShadow:ready?"0 4px 16px rgba(200,121,65,0.35)":"0 4px 16px rgba(0,0,0,0.2)",cursor:ready?"pointer":"default",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",transition:"background 0.3s"}}>{ready?<span>↓</span>:<div style={{width:13,height:13,border:"2px solid rgba(255,255,255,0.4)",borderTopColor:"#fff",borderRadius:"50%",animation:"spin 0.8s linear infinite",flexShrink:0}}/>}<span>New recommendations</span></button>);})()}
-    <TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={hasNewTips} onTabChange={key=>{setDetailSheet(null);setMissedDtStr(null);if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();setTimeout(()=>{setView(key);setSelectedDay(null);},80);}}/>
+    <TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={hasNewTips}/>
 
     {addSheet&&(<BottomSheet onClose={()=>setAddSheet(null)}>
       <div style={{padding:"4px 20px 12px"}}><div style={{fontSize:18,fontWeight:700,color:"var(--t1)"}}>Add medication</div></div>
@@ -1652,7 +1753,7 @@ function App(){
         <button onClick={()=>{setVersionInventory("");setPendingVersionEdit(null);}} style={{width:"100%",padding:"12px",borderRadius:14,background:"transparent",color:"var(--t2)",fontSize:15,fontWeight:500,border:"none",cursor:"pointer"}}>Annuler</button>
       </div>
     </div>)}
-    <TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={hasNewTips} onTabChange={key=>{setDetailSheet(null);setMissedDtStr(null);if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();setTimeout(()=>{setView(key);setSelectedDay(null);},80);}}/>
+    <TabBar view={view} setView={setView} setSelectedDay={setSelectedDay} hasNewTips={hasNewTips}/>
 
   </>);
 }
@@ -1661,23 +1762,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 <script>
 if("serviceWorker"in navigator){
-  const sw='const C="pr-v130",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}if(e.request.mode==="navigate"){e.respondWith(fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;}).catch(()=>caches.match(e.request).then(r=>r||caches.match(self.location.pathname))));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
+  const sw='const C="pr-v131",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}if(e.request.mode==="navigate"){e.respondWith(fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;}).catch(()=>caches.match(e.request).then(r=>r||caches.match(self.location.pathname))));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
-</script>
-<script>
-(function(){
-  function resetViewport(){
-    var vp=document.querySelector('meta[name="viewport"]');
-    if(!vp)return;
-    vp.setAttribute('content','width=device-width,initial-scale=1,viewport-fit=cover');
-  }
-  document.addEventListener('focusout',function(e){
-    if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'){
-      setTimeout(resetViewport,100);
-    }
-  },true);
-})();
 </script>
 </body>
 </html>
