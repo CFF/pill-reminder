@@ -140,7 +140,8 @@ async function sbGet(key){
   }
 }
 async function sbSetRemote(key,value){
-  await fetch(`${SUPA_URL}/rest/v1/data`,{method:"POST",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({user_token:USER_TOKEN,key,value,updated_at:new Date().toISOString()})});
+  const res=await fetch(`${SUPA_URL}/rest/v1/data`,{method:"POST",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({user_token:USER_TOKEN,key,value,updated_at:new Date().toISOString()})});
+  if(!res.ok)throw new Error("sbSet HTTP "+res.status);
 }
 async function sbSet(key,value){
   if(!USER_TOKEN)return;
@@ -1026,7 +1027,11 @@ function SettingsView({profile,setProfile,medicalContext,setMedicalContext,pillL
             <button onClick={async()=>{
               const days=await sbGetAllDayKeys("pr:day:");
               const logs={};for(const r of days)logs[r.key.replace("pr:day:","")]=r.value;
-              const data={pillList,archived,logs,profile,exportedAt:new Date().toISOString()};
+              const anRows=await sbGetAllDayKeys("pr:asneeded:");
+              const anData={};for(const r of anRows)anData[r.key.replace("pr:asneeded:","")]=r.value;
+              const mc=await sbGet("pr:medical-context");
+              const ev=await sbGet(EVENTS_KEY);
+              const data={schema:2,pillList,archived,logs,asneeded:anData,medicalContext:mc,events:ev,profile,exportedAt:new Date().toISOString()};
               const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
               const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`posology-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(url);
             }} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"15px 16px",background:"transparent",color:"var(--t1)",fontSize:15,fontWeight:500,textAlign:"left"}}>Create backup<span style={{fontSize:13,color:"var(--blue)"}}>Download JSON</span></button>
@@ -1040,7 +1045,10 @@ function SettingsView({profile,setProfile,medicalContext,setMedicalContext,pillL
                 if(data.archived){await sbSet(ARCHIVED_KEY,data.archived);setArchived(data.archived);}
                 if(data.logs){for(const[d,l]of Object.entries(data.logs))await sbSet(dayKey(d),l);}
                 if(data.profile){await sbSet(PROFILE_KEY,data.profile);setProfile(data.profile);}
-                alert("Import successful!");
+                if(data.asneeded){for(const[d,v]of Object.entries(data.asneeded))await sbSet(asNeededDayKey(d),v);}
+                if(data.medicalContext){await sbSet("pr:medical-context",data.medicalContext);setMedicalContext(data.medicalContext);}
+                if(data.events){await sbSet(EVENTS_KEY,data.events);}
+                alert("Import successful!");location.reload();
               }catch{alert("Import failed — invalid file.");}
             }}/>
           </div>
@@ -1059,7 +1067,7 @@ function SettingsView({profile,setProfile,medicalContext,setMedicalContext,pillL
           <div style={{background:"var(--card)",borderRadius:16,overflow:"hidden",boxShadow:"var(--shadow-sm)"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>App</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Posology</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v131</span></div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Version</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>pr-v132</span></div>
             <div style={{height:"0.5px",background:"var(--sep)"}}/>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}><span style={{fontSize:15,color:"var(--t2)"}}>Storage</span><span style={{fontSize:15,color:"var(--t1)",fontWeight:500}}>Supabase</span></div>
           </div>
@@ -1091,6 +1099,24 @@ function NoTokenView(){
   </div>);
 }
 
+class ErrorBoundary extends React.Component{
+  constructor(props){super(props);this.state={hasError:false};}
+  componentDidCatch(error,info){this.setState({hasError:true});}
+  render(){
+    if(this.state.hasError){
+      return (
+        <div style={{position:"fixed",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,padding:24,background:"var(--bg)",textAlign:"center"}}>
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <div style={{fontSize:19,fontWeight:600,color:"var(--t1)"}}>Something went wrong</div>
+          <div style={{fontSize:15,color:"var(--t2)",maxWidth:280,lineHeight:1.4}}>Une erreur est survenue. Rechargez l'application pour continuer.</div>
+          <button onClick={()=>window.location.reload()} style={{width:"100%",maxWidth:280,padding:"14px",borderRadius:14,border:"none",background:"var(--acc)",color:"#fff",fontSize:16,fontWeight:600,marginTop:8}}>Reload</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function App(){
   const [view,setView]=useState("today");
   const [pillList,setPillList]=useState(DEFAULT_PILLS);
@@ -1113,7 +1139,7 @@ function App(){
     const allPills=[...(pillList.morning||[]),...(pillList.lunch||[]),...(pillList.evening||[]),...(pillList.as_needed||[])];
     if(allPills.length===0){setTipsLoading(false);return;}
     const pillsDesc=allPills.map(p=>{const doseStr=p.dosageAmt&&p.dosageUnit?`${p.dosageAmt}${p.dosageUnit}`:p.dose||"";return`- ${p.name}${doseStr?` (${doseStr})`:""}`+(p.asNeeded?" [as needed]":"")+(p.maxDailyDose?` max ${p.maxDailyDose}x/day`:"");}).join("\n");
-    const hashKey="pr:tips:"+btoa(unescape(encodeURIComponent(pillsDesc))).slice(0,40);
+    const hashKey="pr:tips:"+btoa(unescape(encodeURIComponent(pillsDesc)));
     try{
       const res=await fetch(`${SUPA_URL}/functions/v1/get-tips`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+SUPA_KEY},body:JSON.stringify({pillsDesc})});
       const tips=await res.json();
@@ -1304,7 +1330,7 @@ function App(){
         (p.asNeeded?" [as needed]":"")+
         (p.maxDailyDose?` max ${p.maxDailyDose}x/day`:"");
     }).join("\n");
-    const hashKey="pr:tips:"+btoa(unescape(encodeURIComponent(pillsDesc))).slice(0,40);
+    const hashKey="pr:tips:"+btoa(unescape(encodeURIComponent(pillsDesc)));
     try{
       const cached=await sbGet(hashKey);
       if(cached&&Array.isArray(cached)){const activeNames=allPills.map(p=>p.name.toLowerCase());const filtered=cached.filter(t=>t.label.toLowerCase()==="interactions"||activeNames.some(n=>t.label.toLowerCase().includes(n)||n.includes(t.label.toLowerCase())));if(filtered.length!==cached.length){await sbSet(hashKey,filtered);}setAiTips(filtered);const seenRaw=JSON.parse(localStorage.getItem("pr:seenTipLabels")||"[]");const newLabels=filtered.map(t=>t.label).filter(l=>!seenRaw.includes(l));if(newLabels.length>0){setNewTipLabels(new Set(newLabels));setHasNewTips(true);}else{setHasNewTips(false);}setTipsLoading(false);return;}
@@ -1667,7 +1693,7 @@ function App(){
             if(detailSheet.session==="as_needed"){
               const updatedPill={...detailSheet.pill,...rest,schedules:[],sessions:["as_needed"]};
               const newList={...pillList,as_needed:(pillList.as_needed||[]).map(p=>p.id===id?updatedPill:p)};
-              setPillList(newList);await sbSet(PILL_LIST_KEY,newList);setDetailSheet(null);return;
+              setPillList(newList);await sbSet(PILL_LIST_KEY,newList);setTipsLoading(true);generateTips(newList);setDetailSheet(null);return;
             }
             // detect clinical change: dose, schedules, startDate, durationDays
             const old=detailSheet.pill;
@@ -1690,7 +1716,7 @@ function App(){
             for(const s of oldSessions){if(!newSessList.includes(s)&&newLog[s]){newLog={...newLog,[s]:{...newLog[s]}};delete newLog[s][id];}}
             for(const s of newSessList){if(!oldSessions.includes(s)&&s!=="as_needed"){newLog={...newLog,[s]:{...newLog[s],[id]:false}};}}
             setTodayLog(newLog);await sbSet(dayKey(todayStr()),newLog);
-            setPillList(newList);await sbSet(PILL_LIST_KEY,newList);setDetailSheet(null);
+            setPillList(newList);await sbSet(PILL_LIST_KEY,newList);setTipsLoading(true);generateTips(newList);setDetailSheet(null);
           }}
           onCancel={()=>setDetailSheet(null)}
         />
@@ -1748,6 +1774,7 @@ function App(){
           setTodayLog(newLog);await sbSet(dayKey(today),newLog);
           setPillList(newList);await sbSet(PILL_LIST_KEY,newList);
           const evtsAfterChange=[{type:"changed",date:today,pillName:old.name,oldDose:old.dose||"",newDose:rest.dose||"",session:foundSessForArchive,pillId:newId},...storedEvents];setStoredEvents(evtsAfterChange);await sbSet(EVENTS_KEY,evtsAfterChange);
+          setTipsLoading(true);generateTips(newList);
           setVersionInventory("");setPendingVersionEdit(null);setDetailSheet(null);
         }} style={{width:"100%",padding:"14px",borderRadius:14,background:"var(--acc)",color:"#fff",fontSize:16,fontWeight:600,border:"none",cursor:"pointer",marginBottom:12}}>Confirmer le changement</button>
         <button onClick={()=>{setVersionInventory("");setPendingVersionEdit(null);}} style={{width:"100%",padding:"12px",borderRadius:14,background:"transparent",color:"var(--t2)",fontSize:15,fontWeight:500,border:"none",cursor:"pointer"}}>Annuler</button>
@@ -1758,11 +1785,11 @@ function App(){
   </>);
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+ReactDOM.createRoot(document.getElementById("root")).render(<ErrorBoundary><App/></ErrorBoundary>);
 </script>
 <script>
 if("serviceWorker"in navigator){
-  const sw='const C="pr-v131",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}if(e.request.mode==="navigate"){e.respondWith(fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;}).catch(()=>caches.match(e.request).then(r=>r||caches.match(self.location.pathname))));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
+  const sw='const C="pr-v132",A=[self.location.pathname];self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting();});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.url.includes("supabase.co")){e.respondWith(fetch(e.request));return;}if(e.request.mode==="navigate"){e.respondWith(fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;}).catch(()=>caches.match(e.request).then(r=>r||caches.match(self.location.pathname))));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;})));});';
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(e=>console.warn(e));
 }
 </script>
